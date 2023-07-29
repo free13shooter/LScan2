@@ -1,0 +1,1143 @@
+                                - vq_cortexm3 -                       Page    1
+
+###############################################################################
+#                                                                             #
+#     IAR Assembler V6.30.1.53127/W32 for ARM 01/Nov/2017  17:53:09           #
+#     Copyright 1999-2011 IAR Systems AB.                                     #
+#                                                                             #
+#           Source file   =  E:\STM32\LScan\speex\speex\STM32\libspeex\iar\vq_cortexm3.s#
+#           List file     =  E:\STM32\LScan\Debug\List\vq_cortexm3.lst        #
+#           Object file   =  E:\STM32\LScan\Debug\Obj\vq_cortexm3.o           #
+#           Command line  =  E:\STM32\LScan\speex\speex\STM32\libspeex\iar\vq_cortexm3.s #
+#                            -OE:\STM32\LScan\Debug\Obj\ -s+ -M<> -w+ -r      #
+#                            -LE:\STM32\LScan\Debug\List\ -cM -i -B -p80 -t8  #
+#                            -xDI2 --cpu Cortex-M4 --fpu VFPv4_sp             #
+#                                                                             #
+###############################################################################
+
+    1                           /* Copyright (C) 2008 STMicroelectronics, MCD
+                                 */
+
+    2                           /*
+
+    3                           
+
+    4                              Redistribution and use in source and binary
+                                 forms, with or without
+
+    5                              modification, are permitted provided that
+                                 the following conditions
+
+    6                              are met:
+
+    7                              
+
+    8                              - Redistributions of source code must
+                                 retain the above copyright
+
+    9                              notice, this list of conditions and the
+                                 following disclaimer.
+
+   10                              
+
+   11                              - Redistributions in binary form must
+                                 reproduce the above copyright
+
+   12                              notice, this list of conditions and the
+                                 following disclaimer in the
+
+   13                              documentation and/or other materials
+                                 provided with the distribution.
+
+   14                              
+
+   15                              - Neither the name of the Xiph.org
+                                 Foundation nor the names of its
+
+   16                              contributors may be used to endorse or
+                                 promote products derived from
+
+   17                              this software without specific prior
+                                 written permission.
+
+   18                              
+
+   19                              THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+                                 HOLDERS AND CONTRIBUTORS
+
+   20                              ``AS IS'' AND ANY EXPRESS OR IMPLIED
+                                 WARRANTIES, INCLUDING, BUT NOT
+
+   21                              LIMITED TO, THE IMPLIED WARRANTIES OF
+                                 MERCHANTABILITY AND FITNESS FOR
+
+   22                              A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO
+                                 EVENT SHALL THE FOUNDATION OR
+
+   23                              CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+                                 INDIRECT, INCIDENTAL, SPECIAL,
+
+   24                              EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+                                - vq_cortexm3 -                       Page    2
+
+                                 (INCLUDING, BUT NOT LIMITED TO,
+
+   25                              PROCUREMENT OF SUBSTITUTE GOODS OR
+                                 SERVICES; LOSS OF USE, DATA, OR
+
+   26                              PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+                                 CAUSED AND ON ANY THEORY OF
+
+   27                              LIABILITY, WHETHER IN CONTRACT, STRICT
+                                 LIABILITY, OR TORT (INCLUDING
+
+   28                              NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+                                 OUT OF THE USE OF THIS
+
+   29                              SOFTWARE, EVEN IF ADVISED OF THE POSSIBILIT
+                                Y OF SUCH DAMAGE.
+
+   30                           */
+
+   31                             
+
+   32                             SECTION .text:CODE(2)
+
+   33                             
+
+   34                             EXPORT vq_nbest
+
+   35                           
+
+   36                           #define t          r0
+
+   37                           #define resp2      r1
+
+   38                           #define E          r2
+
+   39                           
+
+   40                           #define dist       r3
+
+   41                           
+
+   42                           #define E_k        r4
+
+   43                           
+
+   44                           #define t_0        r4
+
+   45                           #define t_1        r5
+
+   46                           #define t_2        r4
+
+   47                           #define t_3        r5
+
+   48                           #define t_4        r4
+
+   49                           #define t_5        r5
+
+   50                           #define t_6        r4
+
+   51                           #define t_7        r5
+
+   52                           #define t_8        r4
+
+   53                           #define t_9        r5
+
+   54                           
+
+   55                           #define codebook_1   r7
+
+   56                           #define codebook_2   r8
+
+   57                           
+
+   58                           #define best_index r10
+
+   59                           #define best_dist  lr
+
+   60                           
+                                - vq_cortexm3 -                       Page    3
+
+
+   61                           #define k          r6
+
+   62                           
+
+   63                           
+
+   64                           
+
+   65                           
+
+   66                           
+
+   67                           vq_nbest
+
+   68                           
+
+   69    00000000 2DE9F047              PUSH   {r4-r10,lr}
+
+   70    00000004 4FF00006              MOV    k, #0x00 ; 32
+
+   71    00000008 089A                  LDR    E, [sp, #32]
+
+   72                           Loop
+
+   73                                           
+
+   74    0000000A 31F9027B              LDRSH  codebook_1, [resp2], #2
+
+   75    0000000E 31F9028B              LDRSH  codebook_2, [resp2], #2
+
+   76    00000012 B0F90040              LDRSH  t_0, [t, #0x0]
+
+   77    00000016 B0F90250              LDRSH  t_1, [t, #0x2]   
+
+   78    0000001A 04FB07F3              MUL    dist, t_0, codebook_1   
+                                                      
+
+   79    0000001E 05FB0833              MLA    dist, t_1, codebook_2,
+                                                      dist
+
+   80                           
+
+   81    00000022 31F9027B              LDRSH  codebook_1, [resp2], #2
+
+   82    00000026 B0F90440              LDRSH  t_2, [t, #0x4]
+
+   83    0000002A 31F9028B              LDRSH  codebook_2, [resp2], #2
+
+   84    0000002E B0F90650              LDRSH  t_3, [t, #0x6]    
+
+   85    00000032 04FB0733              MLA    dist, t_2, codebook_1,
+                                                      dist
+
+   86    00000036 05FB0833              MLA    dist, t_3, codebook_2,
+                                                      dist
+
+   87                           
+
+   88    0000003A 31F9027B              LDRSH  codebook_1, [resp2], #2
+
+   89    0000003E B0F90840              LDRSH  t_4, [t, #0x8]   
+
+   90    00000042 31F9028B              LDRSH  codebook_2, [resp2], #2
+
+   91    00000046 B0F90A50              LDRSH  t_5, [t, #0xA]
+
+   92    0000004A 04FB0733              MLA    dist, t_4, codebook_1,
+                                                      dist
+
+   93    0000004E 05FB0833              MLA    dist, t_5, codebook_2,
+                                                      dist
+
+   94                           
+
+   95    00000052 31F9027B              LDRSH  codebook_1, [resp2], #2
+
+   96    00000056 B0F90C40              LDRSH  t_6, [t, #0xC]
+                                - vq_cortexm3 -                       Page    4
+
+
+   97    0000005A 31F9028B              LDRSH  codebook_2, [resp2], #2
+
+   98    0000005E B0F90E50              LDRSH  t_7, [t, #0xE]
+
+   99    00000062 04FB0733              MLA    dist, t_6, codebook_1,
+                                                      dist
+
+  100    00000066 05FB0833              MLA    dist, t_7, codebook_2,
+                                                      dist
+
+  101                           
+
+  102    0000006A 31F9027B              LDRSH  codebook_1, [resp2], #2
+
+  103    0000006E B0F91040              LDRSH  t_8, [t, #0x10]    
+
+  104    00000072 31F9028B              LDRSH  codebook_2, [resp2], #2
+
+  105    00000076 B0F91250              LDRSH  t_9, [t, #0x12]
+
+  106    0000007A 04FB0733              MLA    dist, t_8, codebook_1,
+                                                      dist
+
+  107    0000007E 05FB0833              MLA    dist, t_9, codebook_2,
+                                                      dist
+
+  108                                   
+
+  109    00000082 52F8044B              LDR    E_k, [E], #4
+
+  110    00000086 C3EB6403              RSB    dist, dist, E_k, ASR #1
+
+  111                           
+
+  112    0000008A 012E                  CMP      k,#0x01
+
+  113    0000008C AEBF                  ITEE     GE
+
+  114    0000008E 7345                  CMPGE    dist, best_dist
+
+  115    00000090 9E46                  MOVLT    best_dist, dist
+
+  116    00000092 B246                  MOVLT    best_index, k
+
+  117                                    
+
+  118    00000094 761C                  ADDS  k, k, #1
+
+  119    00000096 202E                  CMP   k, #0x20
+
+  120    00000098 B7DB                  BLT   Loop
+
+  121                           
+
+  122    0000009A 0A9B                  LDR   dist, [sp,#40]
+
+  123    0000009C C3F800A0              STR   best_index, [dist]
+
+  124    000000A0 0B9B                  LDR   dist, [sp,#44]
+
+  125    000000A2 C3F800E0              STR   best_dist, [dist]
+
+  126                           
+
+  127    000000A6 BDE8F087              POP   {r4-r10,pc}
+
+  128                           
+
+  129                              END
+
+
+
+
+
+EOF                  DELIMITER 
+
+\n                   DELIMITER 
+                                - vq_cortexm3 -                       Page    5
+
+
+                     DELIMITER 
+
+!                    OPERATOR 
+
+!=                   OPERATOR 
+
+%                    OPERATOR 
+
+&                    OPERATOR 
+
+&&                   OPERATOR 
+
+(                    OPERATOR 
+
+(                    DELIMITER 
+
+)                    OPERATOR 
+
+)                    DELIMITER 
+
+*                    OPERATOR 
+
++                    OPERATOR 
+
+,                    DELIMITER 
+
+-                    OPERATOR 
+
+.                    Target symbol: 24 
+
+/                    OPERATOR 
+
+/                    DELIMITER 
+
+:                    Target symbol: 22 
+
+:                    DELIMITER 
+
+;                    Target symbol: 23 
+
+<                    OPERATOR 
+
+<<                   OPERATOR 
+
+<=                   OPERATOR 
+
+<>                   OPERATOR 
+
+=                    OPERATOR 
+
+=                    DIRECTIVE 
+
+==                   OPERATOR 
+
+>                    OPERATOR 
+
+>=                   OPERATOR 
+
+>>                   OPERATOR 
+
+@                    DELIMITER 
+
+AAPCS                DIRECTIVE 
+
+ALIAS                DIRECTIVE 
+
+ALIGN                DIRECTIVE 
+
+ALIGNRAM             DIRECTIVE 
+
+ALIGNROM             DIRECTIVE 
+
+ANOTE                DIRECTIVE 
+
+APSR_NZCV            REGISTER 
+
+ARGFRAME             DIRECTIVE 
+                                - vq_cortexm3 -                       Page    6
+
+
+ARM                  DIRECTIVE 
+
+ASEGN                DIRECTIVE 
+
+ASR                  MNEMONIC 
+
+BIT                  SEGMENT TYPE 
+
+BYTE1                OPERATOR 
+
+BYTE2                OPERATOR 
+
+BYTE3                OPERATOR 
+
+BYTE4                OPERATOR 
+
+C0                   REGISTER 
+
+C1                   REGISTER 
+
+C10                  REGISTER 
+
+C11                  REGISTER 
+
+C12                  REGISTER 
+
+C13                  REGISTER 
+
+C14                  REGISTER 
+
+C15                  REGISTER 
+
+C2                   REGISTER 
+
+C3                   REGISTER 
+
+C4                   REGISTER 
+
+C5                   REGISTER 
+
+C6                   REGISTER 
+
+C7                   REGISTER 
+
+C8                   REGISTER 
+
+C9                   REGISTER 
+
+CALL_GRAPH_ROOT      DIRECTIVE 
+
+CASEOFF              DIRECTIVE 
+
+CASEON               DIRECTIVE 
+
+CFI                  DIRECTIVE 
+
+CODE                 SEGMENT TYPE 
+
+CODE                 DIRECTIVE 
+
+CODE16               DIRECTIVE 
+
+CODE32               DIRECTIVE 
+
+COL                  DIRECTIVE 
+
+CONST                SEGMENT TYPE 
+
+D0                   REGISTER 
+
+D1                   REGISTER 
+
+D10                  REGISTER 
+
+D11                  REGISTER 
+
+D12                  REGISTER 
+                                - vq_cortexm3 -                       Page    7
+
+
+D13                  REGISTER 
+
+D14                  REGISTER 
+
+D15                  REGISTER 
+
+D2                   REGISTER 
+
+D3                   REGISTER 
+
+D4                   REGISTER 
+
+D5                   REGISTER 
+
+D6                   REGISTER 
+
+D7                   REGISTER 
+
+D8                   REGISTER 
+
+D9                   REGISTER 
+
+DATA                 SEGMENT TYPE 
+
+DATA                 DIRECTIVE 
+
+DATE                 OPERATOR 
+
+DC16                 DIRECTIVE 
+
+DC24                 DIRECTIVE 
+
+DC32                 DIRECTIVE 
+
+DC8                  DIRECTIVE 
+
+DCB                  DIRECTIVE 
+
+DCD                  DIRECTIVE 
+
+DCREL32              DIRECTIVE 
+
+DCW                  DIRECTIVE 
+
+DEFINE               DIRECTIVE 
+
+DF32                 DIRECTIVE 
+
+DF64                 DIRECTIVE 
+
+DS16                 DIRECTIVE 
+
+DS24                 DIRECTIVE 
+
+DS32                 DIRECTIVE 
+
+DS8                  DIRECTIVE 
+
+E                    #define, value: r2, line:        38         71      109
+
+ELSE                 DIRECTIVE 
+
+ELSEIF               DIRECTIVE 
+
+END                  DIRECTIVE 
+
+ENDIF                DIRECTIVE 
+
+ENDM                 DIRECTIVE 
+
+ENDMOD               DIRECTIVE 
+
+ENDR                 DIRECTIVE 
+
+EQU                  DIRECTIVE 
+
+EVEN                 DIRECTIVE 
+                                - vq_cortexm3 -                       Page    8
+
+
+EXITM                DIRECTIVE 
+
+EXPORT               DIRECTIVE 
+
+EXTERN               DIRECTIVE 
+
+EXTWEAK              DIRECTIVE 
+
+E_k                  #define, value: r4, line:        42        109      110
+
+FAR                  SEGMENT TYPE 
+
+FARCODE              SEGMENT TYPE 
+
+FARCONST             SEGMENT TYPE 
+
+FARDATA              SEGMENT TYPE 
+
+FPEXC                REGISTER 
+
+FPINST               REGISTER 
+
+FPINST2              REGISTER 
+
+FPSCR                REGISTER 
+
+FPSID                REGISTER 
+
+FUNCALL              DIRECTIVE 
+
+FUNCTION             DIRECTIVE 
+
+HIGH                 OPERATOR 
+
+HUGE                 SEGMENT TYPE 
+
+HUGECODE             SEGMENT TYPE 
+
+HUGECONST            SEGMENT TYPE 
+
+HUGEDATA             SEGMENT TYPE 
+
+HWRD                 OPERATOR 
+
+IDATA                SEGMENT TYPE 
+
+IF                   DIRECTIVE 
+
+IMPORT               DIRECTIVE 
+
+INCLUDE              DIRECTIVE 
+
+LIBRARY              DIRECTIVE 
+
+LOCAL                DIRECTIVE 
+
+LOCFRAME             DIRECTIVE 
+
+LOW                  OPERATOR 
+
+LR                   REGISTER 
+
+LSL                  MNEMONIC 
+
+LSR                  MNEMONIC 
+
+LSTCND               DIRECTIVE 
+
+LSTCOD               DIRECTIVE 
+
+LSTEXP               DIRECTIVE 
+
+LSTMAC               DIRECTIVE 
+
+LSTOUT               DIRECTIVE 
+
+LSTPAG               DIRECTIVE 
+                                - vq_cortexm3 -                       Page    9
+
+
+LSTREP               DIRECTIVE 
+
+LSTXRF               DIRECTIVE 
+
+LTORG                DIRECTIVE 
+
+LWRD                 OPERATOR 
+
+MACRO                DIRECTIVE 
+
+MODULE               DIRECTIVE 
+
+MVFR0                REGISTER 
+
+MVFR1                REGISTER 
+
+NAME                 DIRECTIVE 
+
+NEAR                 SEGMENT TYPE 
+
+NEARCODE             SEGMENT TYPE 
+
+NEARCONST            SEGMENT TYPE 
+
+NEARDATA             SEGMENT TYPE 
+
+NOALLOC              SEGMENT TYPE 
+
+NOCALL               DIRECTIVE 
+
+NOROOT               SEGMENT TYPE 
+
+NPAGE                SEGMENT TYPE 
+
+ODD                  DIRECTIVE 
+
+P0                   REGISTER 
+
+P1                   REGISTER 
+
+P10                  REGISTER 
+
+P11                  REGISTER 
+
+P12                  REGISTER 
+
+P13                  REGISTER 
+
+P14                  REGISTER 
+
+P15                  REGISTER 
+
+P2                   REGISTER 
+
+P3                   REGISTER 
+
+P4                   REGISTER 
+
+P5                   REGISTER 
+
+P6                   REGISTER 
+
+P7                   REGISTER 
+
+P8                   REGISTER 
+
+P9                   REGISTER 
+
+PAGE                 DIRECTIVE 
+
+PAGSIZ               DIRECTIVE 
+
+PC                   REGISTER 
+
+PRESERVE8            DIRECTIVE 
+
+PROGRAM              DIRECTIVE 
+                                - vq_cortexm3 -                       Page   10
+
+
+PUBLIC               DIRECTIVE 
+
+PUBWEAK              DIRECTIVE 
+
+R0                   REGISTER 
+
+R1                   REGISTER 
+
+R10                  REGISTER 
+
+R11                  REGISTER 
+
+R12                  REGISTER 
+
+R13                  REGISTER 
+
+R14                  REGISTER 
+
+R15                  REGISTER 
+
+R2                   REGISTER 
+
+R3                   REGISTER 
+
+R4                   REGISTER 
+
+R5                   REGISTER 
+
+R6                   REGISTER 
+
+R7                   REGISTER 
+
+R8                   REGISTER 
+
+R9                   REGISTER 
+
+RADIX                DIRECTIVE 
+
+REGISTER             SEGMENT TYPE 
+
+RELOC_ARM_PREL31     OPERATOR 
+
+RELOC_ARM_TARGET1    OPERATOR 
+
+RELOC_ARM_TARGET2    OPERATOR 
+
+RELOC_LOCAL          OPERATOR 
+
+REORDER              SEGMENT TYPE 
+
+REPT                 DIRECTIVE 
+
+REPTC                DIRECTIVE 
+
+REPTI                DIRECTIVE 
+
+REQUIRE              DIRECTIVE 
+
+REQUIRE8             DIRECTIVE 
+
+ROOT                 SEGMENT TYPE 
+
+ROR                  MNEMONIC 
+
+RRX                  MNEMONIC 
+
+RSEG                 DIRECTIVE 
+
+RTMODEL              DIRECTIVE 
+
+S0                   REGISTER 
+
+S1                   REGISTER 
+
+S10                  REGISTER 
+
+S11                  REGISTER 
+                                - vq_cortexm3 -                       Page   11
+
+
+S12                  REGISTER 
+
+S13                  REGISTER 
+
+S14                  REGISTER 
+
+S15                  REGISTER 
+
+S16                  REGISTER 
+
+S17                  REGISTER 
+
+S18                  REGISTER 
+
+S19                  REGISTER 
+
+S2                   REGISTER 
+
+S20                  REGISTER 
+
+S21                  REGISTER 
+
+S22                  REGISTER 
+
+S23                  REGISTER 
+
+S24                  REGISTER 
+
+S25                  REGISTER 
+
+S26                  REGISTER 
+
+S27                  REGISTER 
+
+S28                  REGISTER 
+
+S29                  REGISTER 
+
+S3                   REGISTER 
+
+S30                  REGISTER 
+
+S31                  REGISTER 
+
+S4                   REGISTER 
+
+S5                   REGISTER 
+
+S6                   REGISTER 
+
+S7                   REGISTER 
+
+S8                   REGISTER 
+
+S9                   REGISTER 
+
+SBREL                OPERATOR 
+
+SECTION              DIRECTIVE 
+
+SECTION_GROUP        DIRECTIVE 
+
+SECTION_LINK         DIRECTIVE 
+
+SECTION_TYPE         DIRECTIVE 
+
+SET                  DIRECTIVE 
+
+SETA                 DIRECTIVE 
+
+SFB                  OPERATOR 
+
+SFE                  OPERATOR 
+
+SFS                  OPERATOR 
+
+SIZEOF               OPERATOR 
+                                - vq_cortexm3 -                       Page   12
+
+
+SORT                 SEGMENT TYPE 
+
+SP                   REGISTER 
+
+TABLE                DIRECTIVE 
+
+THUMB                DIRECTIVE 
+
+THUMBX               DIRECTIVE 
+
+UGT                  OPERATOR 
+
+ULT                  OPERATOR 
+
+UNTYPED              SEGMENT TYPE 
+
+VAR                  DIRECTIVE 
+
+XDATA                SEGMENT TYPE 
+
+XOR                  OPERATOR 
+
+ZPAGE                SEGMENT TYPE 
+
+[                    DELIMITER 
+
+]                    DELIMITER 
+
+^                    OPERATOR 
+
+^                    DELIMITER 
+
+__ARM4TM__           #define, value: 4, line:         0  
+
+__ARM5TM__           #define, value: 5, line:         0  
+
+__ARM5T__            #define, value: 5, line:         0  
+
+__ARM5__             #define, value: 5, line:         0  
+
+__ARM6MEDIA__        #define, value: 6, line:         0  
+
+__ARM6M__            #define, value: 11, line:         0  
+
+__ARM6SM__           #define, value: 12, line:         0  
+
+__ARM6T2__           #define, value: 6, line:         0  
+
+__ARM6__             #define, value: 6, line:         0  
+
+__ARM7EM__           #define, value: 13, line:         0  
+
+__ARM7__             #define, value: 7, line:         0  
+
+__ARMVFPV1__         #define, value: 1, line:         0  
+
+__ARMVFPV2__         #define, value: 2, line:         0  
+
+__ARMVFPV3_D16__     #define, value: 1, line:         0  
+
+__ARMVFPV3_FP16__    #define, value: 1, line:         0  
+
+__ARMVFPV3__         #define, value: 3, line:         0  
+
+__ARMVFPV4__         #define, value: 4, line:         0  
+
+__ARMVFP_D16__       #define, value: 1, line:         0  
+
+__ARMVFP_FP16__      #define, value: 1, line:         0  
+
+__ARMVFP_SP__        #define, value: 1, line:         0  
+
+__ARMVFP__           #define, value: __ARMVFPV4__, line:         0  
+
+__ARM_MEDIA__        #define, value: 1, line:         0  
+
+__ARM_PROFILE_M__    #define, value: 1, line:         0  
+                                - vq_cortexm3 -                       Page   13
+
+
+__BUILD_NUMBER__     #define,            line:         0  
+
+__CORE__             #define, value: __ARM7EM__, line:         0  
+
+__DATE__             #define,            line:         0  
+
+__FILE__             #define,            line:         0  
+
+__IAR_SYSTEMS_ASM    #define,            line:         0  
+
+__IAR_SYSTEMS_ASM__  #define,            line:         0  
+
+__IASMARM__          #define, value: 1, line:         0  
+
+__LINE__             #define,            line:         0  
+
+__LITTLE_ENDIAN__    #define, value: 1, line:         0  
+
+__SUBVERSION__       #define,            line:         0  
+
+__TID__              #define,            line:         0  
+
+__TIME__             #define,            line:         0  
+
+__VER__              #define,            line:         0  
+
+best_dist            #define, value: lr, line:        59        114      115      125
+
+best_index           #define, value: r10, line:        58        116      123
+
+codebook_1           #define, value: r7, line:        55         74       78       81       85
+                                                                       88       92       95       99
+                                                                      102      106
+
+codebook_2           #define, value: r8, line:        56         75       79       83       86
+                                                                       90       93       97      100
+                                                                      104      107
+
+define               PREPROCESSOR DIRECTIVE 
+
+defined              Target symbol: 0 
+
+dist                 #define, value: r3, line:        40         78       79       79       85
+                                                                       85       86       86       92
+                                                                       92       93       93       99
+                                                                       99      100      100      106
+                                                                      106      107      107      110
+                                                                      110      114      115      122
+                                                                      123      124      125
+
+elif                 PREPROCESSOR DIRECTIVE 
+
+else                 PREPROCESSOR DIRECTIVE 
+
+endif                PREPROCESSOR DIRECTIVE 
+
+error                PREPROCESSOR DIRECTIVE 
+
+if                   PREPROCESSOR DIRECTIVE 
+
+ifdef                PREPROCESSOR DIRECTIVE 
+
+ifndef               PREPROCESSOR DIRECTIVE 
+
+include              PREPROCESSOR DIRECTIVE 
+
+k                    #define, value: r6, line:        61         70      112      116      118
+                                                                      118      119
+
+line                 PREPROCESSOR DIRECTIVE 
+
+lr                   Target symbol: 0 
+
+message              PREPROCESSOR DIRECTIVE 
+
+pragma               PREPROCESSOR DIRECTIVE 
+
+                                - vq_cortexm3 -                       Page   14
+
+r0                   Target symbol: 0 
+
+r1                   Target symbol: 0 
+
+r10                  Target symbol: 0 
+
+r2                   Target symbol: 0 
+
+r3                   Target symbol: 0 
+
+r4                   Target symbol: 0 
+
+r5                   Target symbol: 0 
+
+r6                   Target symbol: 0 
+
+r7                   Target symbol: 0 
+
+r8                   Target symbol: 0 
+
+resp2                #define, value: r1, line:        37         74       75       81       83
+                                                                       88       90       95       97
+                                                                      102      104
+
+t                    #define, value: r0, line:        36         76       77       82       84
+                                                                       89       91       96       98
+                                                                      103      105
+
+t_0                  #define, value: r4, line:        44         76       78
+
+t_1                  #define, value: r5, line:        45         77       79
+
+t_2                  #define, value: r4, line:        46         82       85
+
+t_3                  #define, value: r5, line:        47         84       86
+
+t_4                  #define, value: r4, line:        48         89       92
+
+t_5                  #define, value: r5, line:        49         91       93
+
+t_6                  #define, value: r4, line:        50         96       99
+
+t_7                  #define, value: r5, line:        51         98      100
+
+t_8                  #define, value: r4, line:        52        103      106
+
+t_9                  #define, value: r5, line:        53        105      107
+
+undef                PREPROCESSOR DIRECTIVE 
+
+{                    DELIMITER 
+
+|                    OPERATOR 
+
+||                   OPERATOR 
+
+}                    DELIMITER 
+
+~                    OPERATOR 
+
+
+
+Segment             Type 	Mode
+
+----------------------------------------
+
+.text               CODE  	REL 
+
+__EXTERNS           CODE  	ABS Org:0 
+
+
+
+Label               Mode   Type                   Segment    Value/Offset
+
+------------------------------------------------------------------------------
+
+??DUMMY_SYMBOL_IN_BACKEND_PARSED_OPERANDS
+                    ABS    CONST UNTYP.           ASEG       1267 
+                                - vq_cortexm3 -                       Page   15
+
+
+Loop                REL    CONST UNTYP.           .text      B 
+
+TID                 ABS    CONST UNTYP.           ASEG       4F00 
+
+vq_nbest            REL    CONST PUB UNTYP.       .text      1 
+
+
+
+
+
+##############################
+#           CRC:0            #
+#        Errors:   0         #
+#        Warnings: 0         #
+#         Bytes: 170         #
+##############################
+
+
+
+

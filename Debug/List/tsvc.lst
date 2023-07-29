@@ -1,0 +1,4322 @@
+                                    - tsvc -                          Page    1
+
+###############################################################################
+#                                                                             #
+#     IAR Assembler V7.50.2.10312/W32 for ARM 25/Aug/2022  15:50:57           #
+#     Copyright 1999-2015 IAR Systems AB.                                     #
+#                                                                             #
+#           Source file   =  E:\STM32\LScan2\OS\tsvc.s                        #
+#           List file     =  E:\STM32\LScan2\Debug\List\tsvc.lst              #
+#           Object file   =  E:\STM32\LScan2\Debug\Obj\tsvc.o                 #
+#           Command line  =  E:\STM32\LScan2\OS\tsvc.s                        #
+#                            -OE:\STM32\LScan2\Debug\Obj -s+ -M<> -w+ -r      #
+#                            -LE:\STM32\LScan2\Debug\List -cM -i -B -p80 -t8  #
+#                            -xDI2 --cpu Cortex-M4 --fpu VFPv4_sp -n          #
+#                                                                             #
+###############################################################################
+
+    1                           /*============================================
+                                ==================================
+
+    2                                                      svc call 
+
+    3                                                   @dem1305 15.04.2017
+
+    4                           ==============================================
+                                ================================*/
+
+    5                           #include "core_def.h"
+
+    1                           /**
+
+    2                             Laser project by dem1305
+
+    3                           
+
+    4                             @2017
+
+    5                             
+
+    6                             файл определений данных и констант
+                                 
+
+    7                           */
+
+    8                           //--------------------------------------------
+                                --------------------------------//
+
+    9                           
+
+   10                           
+
+   11                           #ifndef __CORE_DEF_H
+
+   12                           #define __CORE_DEF_H
+
+   13                           //--------------------------------------------
+                                --------------------------------//
+
+   14                           //если определен ENABLE_MULTITHREADING=1 -
+                                 включить многопоточный режим
+
+   15                           #define ENABLE_USE_FPU                1
+                                 //использование сопроцессора
+
+   16                           #define ENABLE_MULTITHREADING        
+                                 1
+
+   17                           #define DISABLE_MCU_BUFFERING_MODE    0
+                                 //отключить буферизацию(эскалация отказов)
+
+   18                           #define CORE_MPU_PROTECTION           0 //1
+                                 //использовать MPU для защиты памяти контекста
+                                 потока (DEBUG MODE)
+
+   19                             
+
+   20                           #define MAX_MSP_STACK_TOP         0x200FFFFF//
+                                верхняя граница
+
+   21                           #define DEFAULT_TSTACK_SIZE       0x1000     
+                                    - tsvc -                          Page    2
+
+                                 //4096 Стек операционной системы
+
+   22                           
+
+   23                           
+
+   24                           #define ENABLE_STACK_CHECK_DEBUG  0 //1
+                                 //необходимо для отладки ОС
+
+   25                           #define CORE_DBG_OPERATION        0 //1
+                                 //необходимо для отладки ОС,запись последней
+                                 операции
+
+   26                           #define CORE_DBG_LEN              8
+
+   27                           //--------------------------------------------
+                                --------------------------------//
+
+   28                           /*
+
+   29                           группировка приоритетов прерываний.
+
+   30                           Прерывания для переключения контекстов требуют
+                                 низшего приоритета для исключения 
+
+   31                           перекрытия других прерываний и невозможности
+                                 подмены EX_RETURN .
+
+   32                           */
+
+   33                           #define CORE_NVIC_PriorityGroup        
+                                 NVIC_PriorityGroup_2    // !!! ЭТО ПОЛНОЕ
+                                 ЗНАЧЕНИЕ ПОЛЯ PRIGROUP для OR-операции биты
+                                 8-10 SCB->AIRCR [0-3] приоритет:[0-3]подприори
+                                тет
+
+   34                           #define CORE_IT_PRIO_GROUP              3     
+                                                  //приоритет группы прерываний
+
+   35                           //--------------------------------------------
+                                --------------------------------//
+
+   36                           /*
+
+   37                           переключение потоков происходит по истечении
+                                 TSV_TIMx_CYCLES циклов 
+
+   38                           таймера , прерывания которого следуют с
+                                 интервалом TSV_TIME_MS :
+
+   39                           TSV_TIMx_CYCLES * TSV_TIME_MS = квант времени
+                                 одного контекста 
+
+   40                           */
+
+   41                            
+
+   42                           #define TSV_TIMx_CYCLES       5          
+                                 //количество интервалов таймера для переключен
+                                ия
+
+   43                           
+
+   44                           #define TSV_TIME_MS           1          
+                                 //интервал таймера переключения контекстов
+
+   45                           //группа прерываний ядра,приоритет группы
+
+   46                           #define TTIMER_IT_PRIO        CORE_IT_PRIO_GRO
+                                UP  //приоритет системного таймера сервисов
+
+   47                           #define TSVCALL_IT_PRIO       CORE_IT_PRIO_GRO
+                                UP  //приоритет прерываний SVCall
+
+   48                           #define TPENDSV_IT_PRIO       CORE_IT_PRIO_GRO
+                                UP  //приоритет прерываний PendSV (самый
+                                 низкий)
+
+                                    - tsvc -                          Page    3
+
+   49                           
+
+   50                           //приоритет выбора обработчика в группе при
+                                 одновременных прерываниях
+
+   51                           #define TTIMER_IT_PRIO_SUB        1     
+                                 //подприоритет системного таймера сервисов
+
+   52                           #define TSVCALL_IT_PRIO_SUB       0     
+                                 //подприоритет прерываний SVCall
+
+   53                           #define TPENDSV_IT_PRIO_SUB       2     
+                                 //подприоритет прерываний PendSV (самый
+                                 низкий)
+
+   54                           
+
+   55                           //--------------------------------------------
+                                --------------------------------//
+
+   56                           // MODE MASK
+
+   57                           #define TPRIV_BIT_Pos       0
+
+   58                           #define TPRIV_Msk           (1UL << TPRIV_BIT_
+                                Pos)
+
+   59                           
+
+   60                           #define TSTACK_MODE_BIT_Pos 1
+
+   61                           #define TSTACK_MODE_Msk     (1UL << TSTACK_MOD
+                                E_BIT_Pos)
+
+   62                           
+
+   63                           #define TFPU_MODE_BIT_Pos   2
+
+   64                           #define TFPU_MODE_Msk       (1UL << TFPU_MODE_
+                                BIT_Pos)
+
+   65                           
+
+   66                           #define TPRIO_BIT_Pos       3
+
+   67                           #define TPRIO_Msk           (31UL <<
+                                 TPRIO_BIT_Pos)
+
+   68                           
+
+   69                           #define TCRITSECT_BIT_Pos   8
+
+   70                           #define TCRITSECT_Msk       (1UL << TCRITSECT_
+                                BIT_Pos)
+
+   71                           
+
+   72                           #define TSUSPENDED_BIT_Pos  9
+
+   73                           #define TSUSPENDED_Msk      (1UL << TSUSPENDED
+                                _BIT_Pos)
+
+   74                           
+
+   75                           #define TSTACKSIZE_BIT_Pos  10
+
+   76                           #define TSTACKSIZE_Msk      (1UL << TSTACKSIZE
+                                _BIT_Pos)
+
+   77                           
+
+   78                           //     ************
+
+   79                           #define TMMRAM_CTX_BIT_Pos  11   //   0x800 ==
+                                 2048==не использовать память CCM_RAM для
+                                 контекста
+
+   80                           #define TMMRAM_CTX_Msk      (1UL << TMMRAM_CTX
+                                    - tsvc -                          Page    4
+
+                                _BIT_Pos)
+
+   81                           
+
+   82                           #define TMMRAM_STACK_BIT_Pos 12   //   0x1000
+                                 == 4096==не использовать память CCM_RAM для
+                                 стека
+
+   83                           #define TMMRAM_STACK_Msk     (1UL <<
+                                 TMMRAM_STACK_BIT_Pos)
+
+   84                           //     ************
+
+   85                           
+
+   86                           //----------режимы----------
+
+   87                           #define TM_PRIV             0              
+                                 //привилегированный
+
+   88                           #define TM_NPRIV            TPRIV_Msk      
+                                 //непривилегированный
+
+   89                           
+
+   90                           #define TM_MSP              0              
+                                 //используется MSP
+
+   91                           #define TM_PSP              TSTACK_MODE_Msk
+                                 //используется PSP
+
+   92                           
+
+   93                           /*
+
+   94                           сохранять контекст FPU в стеке PSP потока
+                                 (1=нет)
+
+   95                           CONTROL register bit 2 = FPCA: Indicates
+                                 whether floating-point context currently
+                                 active:
+
+   96                           0: No floating-point context active
+
+   97                           1: Floating-point context active.
+
+   98                           */
+
+   99                           #define TM_NFPU             0
+
+  100                           #define TM_FPU              TFPU_MODE_Msk
+
+  101                           
+
+  102                           #define TM_CREATE_SUSPENDED TSUSPENDED_Msk 
+                                 //приостановлен
+
+  103                           #define TM_SET_STACK_SIZE   TSTACKSIZE_Msk 
+                                 //при создании потока задать размер стека
+
+  104                           /* ===========================================
+                                ===========================
+
+  105                                 CONTROL register
+
+  106                                 доступ только в привелигированном
+                                 режиме
+
+  107                                 использовать команды MSR, MRS .
+
+  108                                 имена битов:
+
+  109                           
+
+  110                           #define CTRL_PRIV    0x00000000 //бит 0
+                                 привилегированный режим Thread Mode
+
+  111                           #define CTRL_NPRIV   0x00000001 //бит 0 не
+                                    - tsvc -                          Page    5
+
+                                 привилегированный режим Thread Mode
+
+  112                           
+
+  113                           #define CTRL_MSPSEL  0x00000000 //бит 1 выбор
+                                 стека для Handler Mode (0: MSP, 1: PSP)
+
+  114                           #define CTRL_PSPSEL  0x00000002 //бит 1 выбор
+                                 стека для Handler Mode (0: MSP, 1: PSP)
+
+  115                           
+
+  116                           #define CTRL_FPSP    0x00000004 //сохранять ли
+                                 контекст FPU в стеке
+
+  117                           */
+
+  118                           //EXC_RETURN
+
+  119                           #define EXC_RET_USE_BITMSK  0x1F      
+                                 //исполльзуемые биты
+
+  120                           
+
+  121                           #define EXC_RET_BASE        0xFFFFFFE1
+
+  122                           
+
+  123                           #define EXC_RET_HALDLER_MSP 0xFFFFFFF1
+                                 //возврат в режим обработчика c использованием
+                                 MSP[0001]
+
+  124                           #define EXC_RET_THREAD_MSP  0xFFFFFFF9
+                                 //возврат в режим потока c использованием
+                                 MSP[1001]
+
+  125                           #define EXC_RET_THREAD_PSP  0xFFFFFFFB
+                                 //возврат в режим потока c использованием
+                                 PSP[1011]
+
+  126                           //-----битовые значения возврата------
+
+  127                           #define EXC_RET_MSP     0   //возврат с
+                                 использованием стека MSP
+
+  128                           #define EXC_RET_PSP     4   //возврат с
+                                 использованием стека PSP
+
+  129                           
+
+  130                           #define EXC_RET_HALDLER 0   //возврат в режим
+                                 обработчика
+
+  131                           #define EXC_RET_THREAD  8   //возврат в режим
+                                 потока
+
+  132                           //значение бита использования FPU при возврате
+                                 (стек тот же,что у потока)
+
+  133                           #define EXC_RET_NOFPU   16
+
+  134                           #define EXC_RET_USEFPU  0
+
+  135                           
+
+  136                           
+
+  137                           //--------------------------------------------
+                                --------------------------------//
+
+  138                           #define TSV_TIMER             TIM2            
+                                      //таймер планировщика
+
+  139                           #define TSV_TIMER_BASE_ADR    0x40000000      
+                                      //TIM2 BASE
+
+  140                           
+
+                                    - tsvc -                          Page    6
+
+  141                           #define TIMx_SR_OFFSET        0x10            
+                                      //TIM SR register offset
+
+  142                           #define TIMx_DIER_OFFSET      0x0C            
+                                      //TIM DIER register offset
+
+  143                           
+
+  144                           #define NVIC_BASE_ADR         0xE000E100  //!<
+                                 NVIC Base Address                  */
+
+  145                           
+
+  146                           #define TSV_TIM_NVIC_ISER_OFS 0     
+                                 //смещение регистра разреш.прерывания
+                                 таймера
+
+  147                           #define TSV_TIM_NVIC_ICER_OFS 0x080 
+                                 //смещение регистра запрета прерывания
+                                 таймера
+
+  148                           #define TSV_TIM_NVIC_BIT      29     //бит для
+                                 разрешения/запрета прерывания= 1<<(irq&1F)
+
+  149                           //#define TSV_TIM_NVIC_BIT_VAL  (1UL<<TSV_TIM_
+                                NVIC_BIT)     
+
+  150                           
+
+  151                           #define TSV_TIMER_RCC_APBCmd  RCC_APB1PeriphCl
+                                ockCmd
+
+  152                           #define TSV_TIMER_APBPeriph   RCC_APB1Periph_T
+                                IM2
+
+  153                           #define TSV_TIMER_PSC_1MS     ((uint16_t)2)
+
+  154                           #define TSV_TIMER_ARR_1MS     ((uint16_t)42000
+                                )
+
+  155                           
+
+  156                           #define TSV_TIMER_IRQ         TIM2_IRQn
+
+  157                           #define TSV_TIMER_IRQ_HNDLR   TIM2_IRQHandler
+
+  158                           //--------------------------------------------
+                                --------------------------------//
+
+  159                           //-------смещения в стеке (PSR PC LR R12 R3 R2
+                                 R1 R0) -------
+
+  160                           #define st_PSR  28    
+
+  161                           #define st_PC   24
+
+  162                           #define st_LR   20
+
+  163                           #define st_R12  16
+
+  164                           #define st_R3   12
+
+  165                           #define st_R2   8
+
+  166                           #define st_R1   4
+
+  167                           #define st_R0   0
+
+  168                           //--------------------------------------------
+                                --------------------------------//
+
+  169                           #define _OCORE_SIZE   16    //размер структуры
+                                 объекта ядра,в байтах (threads.h)
+
+  170                           //--------thread struct offset vals--------
+
+  171                           //--------структура coreobj------->>
+
+                                    - tsvc -                          Page    7
+
+  172                           #define offs_ty       0     //16 бит
+                                 тип
+
+  173                           #define offs_flags    2     //16 бит
+                                 флаги
+
+  174                           #define offs_sync     4     //корень списка
+                                 синхронизации (двунаправленный)
+
+  175                           #define offs_prev     8     //предыдущий
+                                 контекст
+
+  176                           #define offs_next     12    //следующий
+                                 контекст
+
+  177                           //--------структура coreobj-------<<
+
+  178                           #define offs_mode     (0+_OCORE_SIZE)   
+                                 //маска режимов
+
+  179                           #define offs_id       (4+_OCORE_SIZE)   
+                                 //идентификатор потока (int,положительное)
+
+  180                           
+
+  181                           #define offs_tstack_PSP   (8+_OCORE_SIZE)   
+                                 //текущая вершина стека
+
+  182                           #define offs_tstaRAM_PSP  (12+_OCORE_SIZE)  
+                                 //вершина стека
+
+  183                           #define offs_tstsize_PSP  (16+_OCORE_SIZE)  
+                                 //размер стека
+
+  184                           //резервные
+
+  185                           #define offs_rsv0         (20+_OCORE_SIZE)  
+                                 
+
+  186                           #define offs_rsv1         (24+_OCORE_SIZE)
+
+  187                           #define offs_rsv2         (28+_OCORE_SIZE)
+
+  188                           
+
+  189                           #define offs_wait_ms      (32+_OCORE_SIZE)   
+                                 //всего ждать INFINITE=(ULONG)-1 -вечный
+                                 сон
+
+  190                           
+
+  191                           #define offs_sync_size    (36+_OCORE_SIZE)   
+                                 //количество объектов синхронизации
+
+  192                           
+
+  193                           #define offs_R4_R11_regs  (40+_OCORE_SIZE)   
+                                 //остальные регистры процессора
+
+  194                           //--------------------------------------------
+                                --------------------------------//
+
+  195                           //типы объектов ядра
+
+  196                           #define TY_THREAD         0
+
+  197                           #define TY_SEMAPHORE      1
+
+  198                           #define TY_MUTEX          2
+
+  199                           #define TY_EVENT          3
+
+  200                           #define TY_SYSTIMER       4
+
+  201                           #define TY_TASK           5
+
+  202                           
+
+                                    - tsvc -                          Page    8
+
+  203                           #define TY_MAX            TY_TASK
+
+  204                           
+
+  205                           #define TY_ANY            0xFFFF //любой
+                                 тип
+
+  206                           //--------------------------------------------
+                                --------------------------------//
+
+  207                           // CORE OBJECT FLAGS :  флаги объектов ядра
+                                 (16 бит)
+
+  208                           #define CF_PASSIVE        0
+
+  209                           #define CF_SIGNAL         1
+
+  210                           
+
+  211                           #define CF_WAIT_ALL       2
+
+  212                           #define CF_WAIT_MULTIPLE  4     
+
+  213                           
+
+  214                           #define CF_AUTORESET      8      //применитель
+                                но к event
+
+  215                           
+
+  216                           #define CF_PLAIN          0      //нет
+                                 контроля повторного захвата
+
+  217                           #define CF_RECURSIVE      16
+
+  218                           #define CF_TIMED          32
+
+  219                           
+
+  220                           #define CF_CAPTSTATE      0x2000 //в процессе
+                                 захвата
+
+  221                           #define CF_ABANDONED      0x4000 //объект
+                                 брошен захватившим его потоком (поток
+                                 уничтожен)
+
+  222                           #define CF_TIMEOUT        0x8000 //таймаут
+
+  223                           //--------------------------------------------
+                                --------------------------------//
+
+  224                           
+
+  225                           #define SCS_BASE            (0xE000E000UL)    
+                                                        /*!< System Control
+                                 Space Base Address  */
+
+  226                           #define ITM_BASE            (0xE0000000UL)    
+                                                        /*!< ITM Base Address  
+                                                 */
+
+  227                           #define CoreDebug_BASE      (0xE000EDF0UL)    
+                                                        /*!< Core Debug Base
+                                 Address            */
+
+  228                           #define SysTick_BASE        (SCS_BASE + 
+                                 0x0010UL)                    /*!< SysTick Base
+                                 Address               */
+
+  229                           #define NVIC_BASE           (SCS_BASE + 
+                                 0x0100UL)                    /*!< NVIC Base
+                                 Address                  */
+
+  230                           #define SCB_BASE            (SCS_BASE + 
+                                 0x0D00UL)                    /*!< System
+                                 Control Block Base Address  */
+
+  231                           
+                                    - tsvc -                          Page    9
+
+
+  232                           //SCS_BASE:
+
+  233                           #define ICTR_OFFSET         0x004     /*!<
+                                 Offset: 0x004 (R/ )  uint32_t Interrupt
+                                 Controller Type Register     */
+
+  234                           #define ACTLR_OFFSET        0x008     /*!<
+                                 Offset: 0x008 (R/W) uint32_t Auxiliary Control
+                                 Register              */
+
+  235                           //-------------------------------
+
+  236                           //1=запрет буферизации памяти при отображении
+                                 памяти по умолчанию (локализация отказов
+                                 шины)
+
+  237                           #define SCnSCB_ACTLR_DISDEFWBUF_BitPos        
+                                 1                                   /*!<
+                                 ACTLR: DISDEFWBUF Position */
+
+  238                           #define SCnSCB_ACTLR_DISDEFWBUF_MskVal       
+                                 (1UL << SCnSCB_ACTLR_DISDEFWBUF_BitPos) /*!<
+                                 ACTLR: DISDEFWBUF Mask */
+
+  239                           //1=запрет прерывания многоэлементных
+                                 конструкций записи/чтения регистров (LDM/STM)
+
+  240                           #define SCnSCB_ACTLR_DISMCYCINT_BitPos        
+                                 0                                   /*!<
+                                 ACTLR: DISMCYCINT Position */
+
+  241                           #define SCnSCB_ACTLR_DISMCYCINT_MskVal       
+                                 (1UL << SCnSCB_ACTLR_DISMCYCINT_BitPos) /*!<
+                                 ACTLR: DISMCYCINT Mask */
+
+  242                           //-------------------------------
+
+  243                           //System handler priority register 
+
+  244                           #define SHPR_OFFSET     0x18
+
+  245                           #define SHPR2_OFFSET    0x1C
+
+  246                           
+
+  247                           //System handler co ntrol an d state register
+                                 (SHCSR) , Address offset: 0x24
+
+  248                           #define SHCSR_OFFSET    0x24
+
+  249                           
+
+  250                           //!< Offset: 0x014 (R/W)  Configuration
+                                 Control Register  
+
+  251                           #define SCB_CCR_REG     0xE000ED14 //32 bit (2
+                                 WORD)
+
+  252                           
+
+  253                           //0-выравнивание стека 4 байт, 1-выравнивание
+                                 стека 8 байт , бит 9 PSR - режим выравнивания
+
+  254                           #define STKALIGN_VAL    0x200      //девятый
+                                 бит в SBC->CCR   
+
+  255                           
+
+  256                           #define SCB_SHCSR_SVCALLPENDED_BitPos        
+                                 15                                            
+                                 //< SCB SHCSR: SVCALLPENDED Position
+                                 
+
+  257                           #define SCB_SHCSR_SVCALLPENDED_MskVal        
+                                 (1UL << SCB_SHCSR_SVCALLPENDED_BitPos)        
+                                 //< SCB SHCSR: SVCALLPENDED Mask 
+
+                                    - tsvc -                          Page   10
+
+  258                           //-------------------
+
+  259                           #define SCB_ICSR_OFFSET 0x004 //(R/W) 
+                                 Interrupt Control and State Register
+
+  260                           
+
+  261                           #define SCB_ICSR_PENDSVSET_BitPos            
+                                 28                                            
+                                 /*!< SCB ICSR: PENDSVSET Position */
+
+  262                           #define SCB_ICSR_PENDSVSET_MskVal            
+                                 (1UL << SCB_ICSR_PENDSVSET_BitPos)            
+                                    /*!< SCB ICSR: PENDSVSET Mask */
+
+  263                           
+
+  264                           #define SCB_ICSR_PENDSVCLR_BitPos            
+                                 27                                            
+                                 /*!< SCB ICSR: PENDSVCLR Position */
+
+  265                           #define SCB_ICSR_PENDSVCLR_MskVal            
+                                 (1UL << SCB_ICSR_PENDSVCLR_BitPos)    
+                                 
+
+  266                           //--------------------------------------------
+                                --------------------------------//
+
+  267                           #define ERR_EXC_RET         1
+
+  268                           
+
+  269                           #define ERR_STACK_LIM       6   //указатель
+                                 вершины стека PSP ниже выделенной области
+                                 RAM
+
+  270                           #define ERR_UP_STACK_LIM    2   //указатель
+                                 вершины стека PSP выше выделенной области
+                                 RAM
+
+  271                           #define ERR_LO_STACK_LIM    4   //указатель
+                                 вершины стека PSP ниже выделенной области
+                                 RAM
+
+  272                           #define ERR_ZERO_PTR        8   //нулевой
+                                 указатель !
+
+  273                           #define ERR_NOT_FOUND       16  //не найдено
+                                 !
+
+  274                           #define ERR_OUT_OF_MEMORY   32  //нет
+                                 памяти
+
+  275                           #define ERR_IT_STATE        64  //в состоянии
+                                 прерывания
+
+  276                           //--------------------------------------------
+                                --------------------------------//
+
+  277                           #ifndef INFINITE
+
+  278                           //все определения бесконечности в пределах 32
+                                 бит
+
+  279                           #define INFINITE  (0xFFFFFFFFUL) //((ULONG)-1)
+                                 4 байта
+
+  280                           #endif
+
+  281                           //--------------------------------------------
+                                --------------------------------//
+
+  282                           #define NVIC_INT_CTRL_CONST 0xE000ED04
+                                 
+
+  283                           //--------------------------------------------
+                                --------------------------------//
+
+                                    - tsvc -                          Page   11
+
+  284                           #endif//__CORE_DEF_H
+
+    6                           
+
+    7                           //System handler priority register 2 (SHPR2)
+                                 ==SVcall prio.
+
+    8                           
+
+    9                           
+
+   10                           //--------------------------------------------
+                                --------------------------------//
+
+   11                                   MODULE  SVC
+
+   12                                   
+
+   13                                   SECTION OS_CORE:CODE(2) 
+
+   14                                           
+
+   15                           #if CORE_DBG_OPERATION==1
+
+   18                           #endif
+
+   19                           //-----------IMPORT---------------------      
+                                  
+
+   20                                   EXTERN  HardFault_Handler
+
+   21                                   EXTERN  __vector_table
+
+   22                                   EXTERN  led_loop
+
+   23                                   EXTERN  dbg_error_led
+
+   24                                   EXTERN  LSCAN2_LEDToggle
+
+   25                                   EXTERN  select_next_SW_thread
+
+   26                                   EXTERN  sub_switch_context_to_R0_
+
+   27                                   
+
+   28                                   EXTERN  PendSV_Handler
+
+   29                                   EXTERN  mfree //void  mfree(void*
+                                 m)//освобождение памяти
+
+   30                                   
+
+   31                                   //EXTERN  svc_new_thrd //новый
+                                 поток
+
+   32                                   EXTERN  tfunc_wrapper //обертка
+                                 функции потока
+
+   33                                   EXTERN  twrap_del     //удаление
+                                 функции потока
+
+   34                                   //---------- 
+
+   35                                   EXTERN  topMSP
+
+   36                                   EXTERN  pctcon //текущий контекст
+
+   37                                   
+
+   38                                   EXTERN  _proot_       //root
+                                 context*
+
+   39                                   EXTERN  _pend_
+
+   40                                   EXTERN  _otot_
+
+   41                                   //---------- 
+
+                                    - tsvc -                          Page   12
+
+   42                                   EXTERN  svc_new_thrd  //новый поток 
+                                 
+
+   43                                   
+
+   44                                   EXTERN  tswFLdis0     //флаги
+                                 планировщика
+
+   45                                   //--C funcs import-----
+
+   46                                   EXTERN  _rls_object
+
+   47                                   EXTERN  svc_close_hndl
+
+   48                                   EXTERN  core_cut_CoreObj
+
+   49                                   EXTERN  core_cut_CoreObj_no_find
+
+   50                                   EXTERN  core_add_CoreObj
+
+   51                                       // sys timer func
+
+   52                                   EXTERN  svc_RestartSystemTimer
+
+   53                                   EXTERN  svc_PauseSystemTimer
+
+   54                                   EXTERN  svc_ResumeSystemTimer
+
+   55                                   EXTERN  svc_isSystemTimerCounterNull
+
+   56                                   EXTERN  svc_isSystemTimer
+
+   57                                   EXTERN  svc_DeleteSystemTimer
+
+   58                                   EXTERN  core_scan_tasklist
+
+   59                                   
+
+   60                                   //EXTERN core_check_stack_pointer
+
+   61                                   EXTERN core_debug
+
+   62                                   /*
+
+   63                                   возврат из прерывания с проверкой
+                                 EX_RETURN 
+
+   64                                   и установкой корректного SP
+
+   65                                   */
+
+   66                                   EXTERN sub_retIT_R0_thrd_EX_RETURN
+                                 
+
+   67                                   
+
+   68                           //-----------EXPORT------------------------ 
+                                 
+
+   69                                   PUBLIC  SVC_Handler
+
+   70                                   PUBLIC  __in_R0_current_TOP_stack_ctx
+
+   71                                   PUBLIC  __out_R0_to_current_stack_ctx
+
+   72                                   PUBLIC  __out_R0_to_stack_R1_ctx
+                                 //вывод R0 в стек указанного контекста потока
+                                 R1
+
+   73                                   PUBLIC  svc_find_by_handle
+
+   74                                   PUBLIC  svc_delete_thread
+
+   75                                   
+
+   76                                   //PUBLIC  svc_add_core_obj         
+                                 //1 func connect core object
+
+                                    - tsvc -                          Page   13
+
+   77                                   PUBLIC  svc_set_not_privileged    //4
+                                 func set npriv access
+
+   78                                   PUBLIC  svc_set_privileged        //5
+                                 func set priv access
+
+   79                                   PUBLIC  svc_new_thread
+
+   80                           //----------------------------------------- 
+                                 
+
+   81                                   //ONLY CORE ACCESS
+
+   82                                   PUBLIC    svc_get_thread_id        
+                                 //10 func get thread id by HTHREAD (in
+                                 R0=context)
+
+   83                                   PUBLIC    svc_get_thread_handle    
+                                 //11 func get thread context by ID (in
+                                 R0=id)
+
+   84                                   PUBLIC    svc_change_core_obj_flags
+                                 //21        
+
+   85                           
+
+   86                           
+
+   87                           //============================================
+                                ==========================
+
+   88                                   THUMB //! offset+1 !
+
+   89                           //============================================
+                                ========================== 
+
+   90                                   SECTION .rodata:CONST:ROOT(2)  
+                                 //ALIGN 4
+
+   91                                   
+
+   92                           SVC_Cnt         EQU    (SVC_End-SVC_Table)/4
+
+   93    00000000 22000000      SVC_Count       DCD    SVC_Cnt
+
+   94                           //------------------ 
+
+   95                           SVC_Table
+
+   96                           
+
+   97    00000004 ........                      DCD     svc_delete_thread      
+    //0 func delete thread
+
+   98                                           
+
+   99    00000008 ........                      DCD     core_add_CoreObj       
+    //1 func connect core object
+
+  100                                           
+
+  101    0000000C ........                      DCD     svc_sw_thread          
+    //2 func switch thread
+
+  102    00000010 ........                      DCD     svc_get_set_thread_prio
+     //3 func set thread prio
+
+  103                                           
+
+  104    00000014 ........                      DCD     svc_set_not_privileged 
+    //4 func set npriv access
+
+  105    00000018 ........                      DCD     svc_set_privileged     
+    //5 func set priv access
+
+  106                                           
+
+  107    0000001C ........                      DCD     svc_set_sleep          
+                                    - tsvc -                          Page   14
+
+    //6 func set sleep value
+
+  108                                           
+
+  109    00000020 ........                      DCD     svc_set_suspend        
+    //7 func set suspend mask
+
+  110                                           
+
+  111    00000024 ........                      DCD     svc_find_by_handle     
+    //8 func find thread (in R0=context)
+
+  112    00000028 ........                      DCD     svc_find_by_ID         
+    //9 func find thread (in R0=id)
+
+  113                                           
+
+  114    0000002C ........                      DCD     svc_get_thread_id      
+    //10 func get thread id by HTHREAD (in R0=context)
+
+  115    00000030 ........                      DCD     svc_get_thread_handle  
+    //11 func get thread context by ID (in R0=id)
+
+  116                                           
+
+  117    00000034 ........                      DCD     svc_EnterCriticalSectio
+ n  //12 func disable sw thread
+
+  118    00000038 ........                      DCD     svc_LeaveCriticalSectio
+ n  //13 func enable sw thread
+
+  119                                 //запрет/разрешение отложенных
+                                 прерываний переключений контекстов
+
+  120    0000003C ........                      DCD     svc_disable_SW         
+    //14 disable  pendSV IT 
+
+  121    00000040 ........                      DCD     svc_enable_SW          
+    //15 enable   pendSV IT
+
+  122                                           
+
+  123    00000044 ........                      DCD     svc_push_SWflags_R0_dis
+ able_SW //16 сохранить состояние в R0 и запретить переключения
+
+  124    00000048 ........                      DCD     svc_pop_SWflags_R0_SW  
+         //17 восстановить состояние из R0
+
+  125                                           
+
+  126    0000004C ........                      DCD     core_cut_CoreObj       
+       //18 вырезать объект ядра из списка
+
+  127                                           
+
+  128    00000050 ........                      DCD     svc_save_thread_sync_pa
+ rameters //19 запись параметров синхронизации
+
+  129                                           
+
+  130    00000054 ........                      DCD     svc_ReleaseObject      
+     //20 освободить мьютекс
+
+  131    00000058 ........                      DCD     svc_change_core_obj_fla
+ gs  //21 изменить флаги объекта ядра
+
+  132                                           
+
+  133    0000005C ........                      DCD     svc_close_hndl         
+       //22 освободить ресурсы дескриптора
+
+  134                                           
+
+  135    00000060 ........                      DCD     svc_find_and_ret_HANDLE
+     //23 поиск объекта,вернуть HANDLE в стек текущего потока при удаче
+
+  136                                           //--------SYS TIMER-----------
+                                --------
+                                    - tsvc -                          Page   15
+
+
+  137    00000064 ........                      DCD svc_RestartSystemTimer     
+  //#24
+
+  138    00000068 ........                      DCD svc_DeleteSystemTimer      
+  //#25
+
+  139    0000006C ........                      DCD svc_PauseSystemTimer       
+  //#26
+
+  140    00000070 ........                      DCD svc_ResumeSystemTimer      
+  //#27
+
+  141    00000074 ........                      DCD svc_isSystemTimerCounterNul
+ l//#28
+
+  142    00000078 ........                      DCD svc_isSystemTimer          
+  //#29
+
+  143                                           //----------------------------
+                                --------
+
+  144    0000007C ........                      DCD core_cut_CoreObj_no_find   
+  //30
+
+  145                                           
+
+  146    00000080 ........                      DCD svc_new_thread             
+  //31
+
+  147                                           
+
+  148                                           //принудительное переключение
+                                 контекста потока на R0
+
+  149    00000084 ........                      DCD svc_sw_thread_to_R0        
+  //#32
+
+  150                                           
+
+  151                                           //----------------------------
+                                --------
+
+  152    00000088 ........                      DCD svc_scan_tasklist          
+  //33 просканировать список задач
+
+  153                                           //----------------------------
+                                --------
+
+  154                               
+
+  155                           SVC_End
+
+  156                           //------------------       
+
+  157                           
+
+  158                           //--------------------------------------------
+                                ----------------------------------  
+
+  159                                   SECTION OS_CORE:CODE(2) 
+
+  160                                   #if CORE_DBG_OPERATION==1
+
+  176                           #else
+
+  177                           _save_op  MACRO _numop_
+
+  178                                     ENDM
+
+  179                           #endif       
+
+  180                           //--------------------------------------------
+                                ----------------------------------
+
+  181                           SVC_Handler:
+
+  182                                   _save_op 49 
+                                    - tsvc -                          Page   16
+
+
+  182.1                                   ENDM
+
+  183                                   /*
+
+  184                                   //в какой режим выход?
+
+  185                                   MOV R3,LR
+
+  186                                   AND R3,R3,#(EXC_RET_BASE|EXC_RET_THREA
+                                D)
+
+  187                                   CMP R3,#(EXC_RET_BASE|EXC_RET_THREAD)
+                                 //return to thread mode=no errors
+
+  188                                   BEQ svc_it_tst_ok //svc_it_tst_ok_0
+                                 
+
+  189                                     MOV R0,#(ERR_EXC_RET)
+
+  190                                     BL dbg_error_led //ERROR
+
+  191                                     */
+
+  192                           /*        //------------------------- 
+                                 
+
+  193                           svc_it_tst_ok_0:        
+
+  194                                   LDR.W   R0, =pctcon
+
+  195                                   LDR   R0, [R0] 
+
+  196                                   CMP R0,#0
+
+  197                                   BNE.N _svc_it_cont_lp0 
+
+  198                                   
+
+  199                           _svc_it_dbg_lp0:
+
+  200                                   B.N _svc_it_dbg_lp0  //debug
+                                 loop
+
+  201                                   
+
+  202                           _svc_it_cont_lp0:        
+
+  203                                   MRS R2, PSP       //PSP->R0 (bit
+                                 set)
+
+  204                                   STR R2, [R0,#offs_tstack_PSP]
+
+  205                                   ISB
+
+  206                                   DSB*/
+
+  207                                   //------------------------- 
+                                 
+
+  208                           svc_it_tst_ok:        
+
+  209    00000000 1EF0040F              TST   LR, #4        //EXC_RETURN (bit
+                                               2)?
+
+  210    00000004 0CBF                  ITE   EQ            //if Z - MSP else
+                                               PSP
+
+  211    00000006 EFF3088C              MRSEQ R12, MSP       //MSP->R0
+
+  212    0000000A EFF3098C              MRSNE R12, PSP       //PSP->R0 (bit
+                                               set)
+
+  213                                   //извлечь параметры: в стеке PSR PC LR
+                                 R12 R3 R2 R1 R0
+
+  214    0000000E 9CE80F00              LDM R12,{R0-R3}
+
+                                    - tsvc -                          Page   17
+
+  215                                   
+
+  216    00000012 DCF818C0              LDR  R12, [R12,#24]    //извлечь PC из
+                                              стека
+
+  217    00000016 1CF802CC              LDRB R12,[R12,#-2]    //извлечь SVC
+                                              константу
+
+  218                                           
+
+  219    0000001A DFF8F8E3              LDR     LR,=SVC_Count
+
+  220    0000001E DEF800E0              LDR     LR,[LR]
+
+  221    00000022 F445                  CMP     R12,LR
+
+  222    00000024 09D2                  BHS     SVC_Dead                ;
+                                                  Overflow(SVC num >=
+                                                  SVC_Count)
+
+  223    00000026 DFF8F0E3              LDR     LR,=SVC_Table
+
+  224    0000002A 5EF82CC0              LDR     R12,[LR,R12,LSL #2]     ; Load
+                                                 SVC Function Address
+                                                 [base+num*4]
+
+  225    0000002E E047                  BLX     R12                     ; Call
+                                                 SVC Function
+
+  226                                   
+
+  227    00000030 DFF8E803              LDR.W   R0, =pctcon
+
+  228    00000034 0068                  LDR     R0, [R0]
+
+  229    00000036 ........              B       sub_retIT_R0_thrd_EX_RETURN 
+                                                 //полная проверка и выход из
+                                                 прерывания 
+
+  230                                 //--------------------------         
+                                 
+
+  231                           SVC_Dead
+
+  232    0000003A ........              B       HardFault_Handler              
+                                                  ; None Existing SVC       
+                                                 
+
+  233                           //====================удаление потока
+                                 (процесса)================================
+                                 
+
+  234                           //параметр в R0==удаляемый контекст .Вернет 0
+                                 при ошибке(возврат через стек)
+
+  235                           //если в R1 не 0-результат функции записываетс
+                                я в стек.
+
+  236                           svc_delete_thread: //#0
+
+  237                               _save_op 50 
+
+  237.1                                   ENDM
+
+  238    0000003E 0FB5              PUSH  {R0-R3,LR}
+
+  239                               //-----------
+
+  240    00000040 0A46              MOV R2,R1 //выводить ли результат в
+                                         стек
+
+  241    00000042 0346              MOV R3,R0 //удаляемый
+
+  242                               
+
+  243    00000044 28B9              CBNZ.N R0, svd_dt_find //нулевой указатель=
+                                                загрузить текущий
+
+                                    - tsvc -                          Page   18
+
+  244    00000046 DFF8D403          LDR.W R0,=pctcon //загрузить текущий
+
+  245    0000004A 0068              LDR R0,[R0]
+
+  246    0000004C 0028              CMP R0,#0
+
+  247    0000004E 31D0              BEQ svd_ret //0 == ошибка !-> return
+                                          0
+
+  248    00000050 03E0              B.N svd_dt_check_type
+
+  249                               
+
+  250                           svd_dt_find:
+
+  251                               //---поиск в списке ядра-------
+
+  252    00000052 00F0C3F8          BL svc_find_by_handle
+
+  253    00000056 00B9              CBNZ.N R0,svd_dt_check_type //найден
+
+  254    00000058 2CE0              B   svd_ret //ошибка !
+
+  255                               //-----------------------------
+
+  256                           svd_dt_check_type:
+
+  257    0000005A 0188              LDRH R1,[R0,#offs_ty]
+
+  258    0000005C 0029              CMP R1,#TY_THREAD
+
+  259    0000005E 02D0              BEQ.N svd_dt_correct
+
+  260    00000060 4FF00000          MOV R0,#0 //0 == ошибка !-> return
+                                         0
+
+  261    00000064 26E0              B   svd_ret //ошибка !
+
+  262                               
+
+  263                           svd_dt_correct:
+
+  264                               
+
+  265    00000066 DFF8B413          LDR.W R1,=pctcon
+
+  266    0000006A 0968              LDR R1,[R1]
+
+  267    0000006C 8842              CMP R0,R1 
+
+  268    0000006E 18BF              IT  NE //это текущий ?
+
+  269    00000070 0CE0               BNE svd_ccobj    //нет,дальше к освобожден
+                                          ию памяти
+
+  270                                 //переключить контекст,если удаляемый==т
+                                екущий
+
+  271                           svd_scutr_loop:
+
+  272    00000072 ........            BL select_next_SW_thread
+
+  273    00000076 DFF8A413            LDR.W R1,=pctcon
+
+  274    0000007A 0968                LDR R1,[R1]
+
+  275    0000007C 8842                CMP R0,R1 
+
+  276    0000007E F8D0                  BEQ.N svd_scutr_loop  //совпадение !
+                                                повторить (возможен Sync)
+
+  277    00000080 C0B1                    CBZ R0,svd_ret //поток не выбран
+
+  278                                   //------удаление текущего------
+
+  279    00000082 ........              BL sub_switch_context_to_R0_
+
+  280                                   //-----------
+                                    - tsvc -                          Page   19
+
+
+  281    00000086 4269                  LDR R2,[R0,#offs_id] //DBG новый
+                                             контекст
+
+  282                                   //-----------
+
+  283    00000088 4FF00002              MOV R2,#0 //не выводить результат в
+                                             стек
+
+  284                                   //-----------------------------
+
+  285                                   
+
+  286                                   
+
+  287                           svd_ccobj:
+
+  288    0000008C 1846              MOV R0,R3//объект удаления
+
+  289                               
+
+  290    0000008E 0CB4              PUSH {R2,R3}
+
+  291    00000090 ........          BL core_cut_CoreObj_no_find //вырезать
+                                        объект ядра
+
+  292    00000094 0CBC              POP {R2,R3}
+
+  293    00000096 68B1              CBZ.N R0,svd_ret //0 == ошибка !
+
+  294                               
+
+  295                               //free memory
+
+  296    00000098 D869              LDR R0,[R3,#offs_tstaRAM_PSP]
+
+  297    0000009A 0CB4              PUSH {R2,R3}
+
+  298    0000009C ........          BL mfree //освободить память стека
+
+  299    000000A0 0CBC              POP {R2,R3}
+
+  300                               
+
+  301                           svd_ccobj_free_ctx:    
+
+  302    000000A2 1846              MOV R0,R3
+
+  303                               
+
+  304    000000A4 0CB4              PUSH {R2,R3}
+
+  305    000000A6 ........          BL mfree //освободить память структуры
+                                        контекста
+
+  306    000000AA 0CBC              POP {R2,R3}
+
+  307                               
+
+  308    000000AC 4FF00100          MOV R0,#1 //TRUE==OK
+
+  309    000000B0 BFF34F8F          DSB
+
+  310                               
+
+  311                           svd_ret
+
+  312    000000B4 1146              MOV R1,R2
+
+  313    000000B6 0029              CMP R1,#0
+
+  314    000000B8 18BF              IT  NE
+
+  315    000000BA 00F01BF9            BLNE  __out_R0_to_stack_R1_ctx
+
+  316    000000BE 0FBD              POP {R0-R3,PC}
+
+  317                           //========================изменить приоритет==
+                                    - tsvc -                          Page   20
+
+                                ================================== 
+
+  318                           //#3 R0=pctx R1=prio передача через стек
+                                 R2=поток для вывода в стек R3=0==get/1==set
+
+  319                           //int svc_get_set_thread_prio(HTHREAD
+                                 pCTX_R0,uint8_t priority_R1,HTHREAD ht_R2,uint
+                                8_t bget_set_R3);//+
+
+  320                           svc_get_set_thread_prio:      
+
+  321                                   _save_op 51 
+
+  321.1                                   ENDM
+
+  322                                   //R0=pctx R1=prio
+
+  323    000000C0 0FB5                  PUSH {R0-R3,LR}
+
+  324                                           
+
+  325    000000C2 00F08BF8              BL svc_find_by_handle
+
+  326    000000C6 50B9                  CBNZ R0,svccp_set //найден
+
+  327    000000C8 4FF0FF30              MOV R0,#(-1) //error
+
+  328    000000CC 14E0                  B.N svccp_ret
+
+  329    000000CE 002B                  CMP R3,#0
+
+  330    000000D0 05D1                  BNE.N svccp_set
+
+  331                                   //------get------
+
+  332    000000D2 0269                  LDR R2,[R0,#offs_mode]
+
+  333    000000D4 02F0F800              AND R0,R2,#(TPRIO_Msk)
+
+  334    000000D8 4FEAD000              LSR R0,R0,#(TPRIO_BIT_Pos)
+
+  335    000000DC 0CE0                  B.N svccp_ret
+
+  336                                   //---------------
+
+  337                           svccp_set:    
+
+  338    000000DE 01F01F01              AND R1,R1,#31 //маска
+
+  339    000000E2 4FEAC101              LSL R1,R1,#(TPRIO_BIT_Pos)
+
+  340                                  
+
+  341    000000E6 0269                  LDR R2,[R0,#offs_mode]
+
+  342    000000E8 22F0F802              AND R2,R2,#(~TPRIO_Msk)
+
+  343    000000EC 42EA0102              ORR R2,R2,R1
+
+  344    000000F0 0261                  STR R2,[R0,#offs_mode]
+
+  345    000000F2 4FEAD101              LSR R1,R1,#(TPRIO_BIT_Pos)
+
+  346    000000F6 0846                  MOV R0,R1 //no err
+
+  347                                   
+
+  348                           svccp_ret:
+
+  349    000000F8 0FBC                  POP {R0-R3}
+
+  350    000000FA 1146                  MOV R1,R2
+
+  351    000000FC 0029                  CMP R1,#0
+
+  352    000000FE 18BF                  IT  NE
+
+  353    00000100 00F0F8F8                BLNE  __out_R0_to_stack_R1_ctx
+                                    - tsvc -                          Page   21
+
+
+  354    00000104 00BD                  POP {PC}
+
+  355                           //=========переключение контекста потока
+                                 (процесса)======   
+
+  356                           svc_sw_thread: //#2
+
+  357                               _save_op 52 
+
+  357.1                                   ENDM
+
+  358    00000106 00B5              PUSH  {LR}
+
+  359                               //--------------------
+
+  360                               //R0-R3 извлечены.
+
+  361                               //--------------------
+
+  362    00000108 ........          BL    select_next_SW_thread
+
+  363    0000010C 0028              CMP   R0,#0
+
+  364    0000010E 00D1              BNE.N svc_sw_sw_to_R0 //поток выбран
+
+  365                               //--------------------   
+
+  366    00000110 FEE7          svc_sw_inf_loop: B svc_sw_inf_loop
+
+  367                               //--------------------  
+
+  368                           svc_sw_sw_to_R0:
+
+  369    00000112 ........          BL    sub_switch_context_to_R0_ 
+
+  370                               
+
+  371                           svc_sw__ret:
+
+  372    00000116 00BD              POP   {PC}
+
+  373                           //=========функция установки непривелигированн
+                                ого доступа потока================
+
+  374                           svc_set_not_privileged: 
+
+  375                               _save_op 53 
+
+  375.1                                   ENDM
+
+  376    00000118 07B4              PUSH {R0-R2}
+
+  377                               
+
+  378    0000011A DFF80013          LDR.W R1,=pctcon
+
+  379    0000011E 0868              LDR   R0,[R1]
+
+  380    00000120 0269              LDR   R2,[R0,#offs_mode] //COREOBJ
+
+  381    00000122 42F00102          ORR   R2,R2,#(TM_NPRIV)
+
+  382    00000126 C0F80220          STR   R2,[R0,#offs_flags]
+
+  383                               
+
+  384    0000012A EFF31480          MRS R0,CONTROL
+
+  385    0000012E 40F00100          ORR R0,R0,#1
+
+  386    00000132 80F31488          MSR CONTROL, R0 
+
+  387    00000136 07BC              POP {R0-R2}
+
+  388    00000138 7047              BX LR
+
+  389                           //=========функция установки привелигированног
+                                    - tsvc -                          Page   22
+
+                                о доступа потока==================
+
+  390                           svc_set_privileged:
+
+  391                               _save_op 54 
+
+  391.1                                   ENDM
+
+  392    0000013A 07B4              PUSH {R0-R2}
+
+  393                               
+
+  394    0000013C DFF8DC12          LDR.W   R1,=pctcon
+
+  395    00000140 0868              LDR   R0,[R1]
+
+  396    00000142 0269              LDR   R2,[R0,#offs_mode] //COREOBJ
+
+  397    00000144 22F00102          AND   R2,R2,#(~TM_NPRIV)
+
+  398    00000148 C0F80220          STR   R2,[R0,#offs_flags]
+
+  399                               
+
+  400    0000014C EFF31480          MRS R0,CONTROL
+
+  401    00000150 20F00100          AND R0,R0,#(~1)
+
+  402    00000154 80F31488          MSR CONTROL, R0 
+
+  403    00000158 07BC              POP {R0-R2}  
+
+  404    0000015A 7047              BX LR
+
+  405                           //=================== приостановить поток R0
+                                 на R1 ms ========================== 
+
+  406                           /*
+
+  407                           параметры передаются через стек PSP/MSP,
+                                 Возврата значений нет.
+
+  408                           извлечение параметров (регистров) происходит
+                                 при входе в сервис.
+
+  409                           если R0==0-установка для текущего потока.R1==0
+                                -уступить время следующему потоку
+
+  410                           */
+
+  411                           svc_set_sleep: //svc #6
+
+  412                               _save_op 55 
+
+  412.1                                   ENDM
+
+  413    0000015C 0EB5              PUSH {R1-R3,LR}
+
+  414                               //-------
+
+  415    0000015E 00F03DF8          BL svc_find_by_handle
+
+  416    00000162 0028              CMP R0,#0
+
+  417    00000164 08BF              IT EQ 
+
+  418    00000166 0EBD              POPEQ {R1-R3,PC} //CBZ.N R0,svsl_ret
+
+  419                                 
+
+  420    00000168 DFF8B422          LDR.W R2,=tswFLdis0
+
+  421    0000016C 1368              LDR R3,[R2]
+
+  422    0000016E 43F00203          ORR R3,R3,#2 //пропуск одного переключения
+                                         в любом случае
+
+  423    00000172 1360              STR R3,[R2]
+                                    - tsvc -                          Page   23
+
+
+  424                               
+
+  425    00000174 0163              STR    R1,[R0,#offs_wait_ms]  //запись
+                                            параметра ожидания
+
+  426                               
+
+  427                               //-------------------------------------
+
+  428    00000176 4288              LDRH   R2,[R0,#offs_flags] //core
+                                            object
+
+  429    00000178 22F40042          AND    R2,R2,#(~CF_TIMEOUT)  //обнулить
+                                            флаги ~(CF_TIMEOUT|CF_SIGNAL)
+
+  430    0000017C 22F00102          AND     R2,R2,#(~CF_SIGNAL)
+
+  431    00000180 4280              STRH   R2,[R0,#offs_flags] 
+
+  432                               //переключение произойдет в любом
+                                 случае
+
+  433    00000182 ........          BL select_next_SW_thread
+
+  434                             
+
+  435    00000186 0028              CMP   R0,#0
+
+  436    00000188 08BF              IT    EQ
+
+  437    0000018A 0EBD              POPEQ {R1-R3,PC} //BEQ svsl_ret //поток не
+                                           выбран
+
+  438                             
+
+  439    0000018C DFF88C12          LDR.W   R1,=pctcon
+
+  440    00000190 0968              LDR   R1,[R1]
+
+  441    00000192 8142              CMP   R1,R0
+
+  442    00000194 08BF              IT    EQ
+
+  443    00000196 0EBD              POPEQ {R1-R3,PC} //BEQ   _psw_t_ret//текущи
+                                          й==return !!!
+
+  444                               //=========смена текущего потока(процесса)
+                                ============
+
+  445                               /*
+
+  446                                переключение потока и выход из прерывания
+                                .
+
+  447                                используется в 
+
+  448                                прерывании PendSV,
+
+  449                                сервисе Sleep,
+
+  450                                */
+
+  451                               //PSR PC LR R12 R3 R2 R1 R0
+
+  452    00000198 ........          BL sub_switch_context_to_R0_ //сохранить
+                                        контекст и получить новое значение
+                                        контекста
+
+  453                               //полная проверка контекста, EXC_RETURN и
+                                 режимов и выход из прерывания  
+
+  454    0000019C 0EBD              POP {R1-R3,PC} 
+
+  455                           //================= установки маски suspend R1
+                                 потока R0 ======================= 
+
+  456                           //если R0==0-установка для текущего потока
+                                    - tsvc -                          Page   24
+
+
+  457                           //uint32_t  call_set_suspend(HTHREAD hthrd_R0,
+                                 uint32_t suspendMask_R1,HTHREAD ht_R2);
+
+  458                           svc_set_suspend: //svc #7
+
+  459                             _save_op 56
+
+  459.1                                   ENDM
+
+  460                             
+
+  461    0000019E 06B5            PUSH {R1-R2,LR}
+
+  462    000001A0 00F01CF8        BL svc_find_by_handle
+
+  463    000001A4 10B9            CBNZ R0,svss_set_suspmask //найден
+
+  464    000001A6 4FF0FF30        MOV R0,#(-1) //error
+
+  465    000001AA 10E0            B.N svss_ret
+
+  466                             //---установка бита---
+
+  467                           svss_set_suspmask:
+
+  468                             
+
+  469    000001AC 4288            LDRH   R2,[R0,#offs_flags] //core object
+
+  470    000001AE B1F5007F        CMP    R1,#(TM_CREATE_SUSPENDED)
+
+  471    000001B2 04BF            ITT    EQ
+
+  472    000001B4 22F00102          ANDEQ  R2,R2,#(~CF_SIGNAL)  //поток не
+                                            активен,если TM_CREATE_SUSPENDED
+
+  473    000001B8 4280              STRHEQ R2,[R0,#offs_flags] 
+
+  474                               
+
+  475    000001BA 01F40071        AND R1,R1,#(TM_CREATE_SUSPENDED)
+
+  476    000001BE 0269            LDR R2,[R0,#offs_mode]
+
+  477    000001C0 22F40072        AND R2,R2,#(~TM_CREATE_SUSPENDED)
+
+  478    000001C4 42EA0102        ORR R2,R2,R1
+
+  479    000001C8 0261            STR R2,[R0,#offs_mode]
+
+  480    000001CA 00F00000        AND R0,R0,#0 //no errors
+
+  481                             
+
+  482                           svss_ret:
+
+  483    000001CE 06BC            POP {R1-R2}
+
+  484    000001D0 1146            MOV R1,R2
+
+  485    000001D2 0029            CMP R1,#0
+
+  486    000001D4 18BF            IT  NE
+
+  487    000001D6 00F08DF8           BLNE  __out_R0_to_stack_R1_ctx
+
+  488                             
+
+  489    000001DA 00BD            POP {PC}
+
+  490                           //============найти объект по R0=POBJECT(прове
+                                рка указателя)=====================
+
+  491                           //(при R0==0 в R0 будет загружен текущий
+                                 контекст потока,
+
+  492                           //вернет результат (хендл контекста) в R0 ,
+                                    - tsvc -                          Page   25
+
+                                 или 0,если не найден
+
+  493                           svc_find_by_handle: //#8
+
+  494                             _save_op 57
+
+  494.1                                   ENDM
+
+  495                             
+
+  496    000001DC 0EB5            PUSH {R1-R3,LR}
+
+  497                             //нужно ли загрузить R0
+
+  498    000001DE 10B9            CBNZ.N R0,svfbh_check_begin
+
+  499    000001E0 DFF83802        LDR.W R0,=pctcon //текущий
+
+  500    000001E4 0068            LDR R0,[R0]
+
+  501                           //поиск контекста  
+
+  502                           svfbh_check_begin:
+
+  503    000001E6 DFF83C32          LDR.W R3,=_proot_ //указатель
+
+  504    000001EA 1B68              LDR R3,[R3]   //значение
+
+  505                               
+
+  506                           svfbh_loop_search:
+
+  507    000001EC 4BB9              CBNZ R3,svfbh_cont //не ноль
+
+  508    000001EE 4FF00000          MOV R0,#0   //не найден
+
+  509    000001F2 0AE0              B.N svfbh_ret  //выйти,если больше нет (не
+                                          найден)
+
+  510    000001F4 DFF83012          LDR.W R1,=_pend_ //последний?
+
+  511    000001F8 0968              LDR R1,[R1]    //значение
+
+  512    000001FA 8B42              CMP R3,R1   
+
+  513    000001FC 04BF              ITT EQ
+
+  514    000001FE 0020              MOVEQ R0,#0   //не найден
+
+  515    00000200 03E0              BEQ.N svfbh_ret  //выйти,если больше нет
+                                            (не найден)
+
+  516                               
+
+  517                           svfbh_cont:
+
+  518    00000202 8342              CMP R3,R0     
+
+  519    00000204 01D0              BEQ.N svfbh_ret //соответствует (R0==R3==ко
+                                           нтекст)
+
+  520    00000206 DB68              LDR R3,[R3,#offs_next]
+
+  521    00000208 F0E7              B.N svfbh_loop_search
+
+  522                           
+
+  523                           svfbh_ret:
+
+  524    0000020A 0EBD            POP {R1-R3,PC}
+
+  525                             
+
+  526                           //============найти объект по R0=HANDLE(провер
+                                ка указателя)=====================
+
+  527                           //вернет результат (хендл контекста) в R0 ,
+                                 или 0,если не найден
+                                    - tsvc -                          Page   26
+
+
+  528                           //HANDLE call_find_handle (HANDLE ho_R0,HTHREA
+                                D ht_R1); #23 
+
+  529                           svc_find_and_ret_HANDLE: //#23
+
+  530                               _save_op 58
+
+  530.1                                   ENDM
+
+  531                               
+
+  532    0000020C 0EB5            PUSH {R1-R3,LR}
+
+  533                           
+
+  534                           //поиск контекста c _proot_
+
+  535    0000020E DFF81432          LDR.W R3,=_proot_   //указатель
+
+  536    00000212 1B68              LDR R3,[R3]       //значение
+
+  537                               
+
+  538                           svfrh_loop_search:
+
+  539    00000214 6BB9              CBNZ R3,svfrh_ret //не ноль
+
+  540    00000216 4FF00000          MOV R0,#0         //не найден
+
+  541    0000021A 0AE0              B.N svfrh_ret     //выйти,если больше нет
+                                          или 0 (не найден)
+
+  542    0000021C DFF80812          LDR.W R1,=_pend_    //последний?
+
+  543    00000220 0968              LDR R1,[R1]       //значение
+
+  544    00000222 8B42              CMP R3,R1   
+
+  545    00000224 04BF              ITT EQ
+
+  546    00000226 0020                MOVEQ R0,#0       //не найден
+
+  547    00000228 03E0                BEQ.N svfrh_ret   //выйти,если больше нет
+                                              (не найден)
+
+  548                               
+
+  549                           svfrh_cont:
+
+  550    0000022A 8342              CMP R3,R0     
+
+  551    0000022C EDD0              BEQ.N svfbh_ret   //соответствует
+                                            (R0==R3==HANDLE)
+
+  552    0000022E DB68              LDR R3,[R3,#offs_next]
+
+  553    00000230 F0E7              B.N svfrh_loop_search
+
+  554                           
+
+  555                           svfrh_ret:
+
+  556    00000232 0EBC            POP {R1-R3}
+
+  557    00000234 0029            CMP R1,#0
+
+  558    00000236 18BF            IT  NE
+
+  559    00000238 00F05CF8           BLNE  __out_R0_to_stack_R1_ctx
+
+  560    0000023C 00BD            POP {PC}
+
+  561                           //=================найти поток по R0=HTHREAD->
+                                id================================
+
+  562                           //(при R0==0 в R0 будет загружен текущий
+                                 контекст->id,
+                                    - tsvc -                          Page   27
+
+
+  563                           //вернет результат (хендл контекста) в R0 ,
+                                 или 0,если не найден
+
+  564                           svc_find_by_ID: //#9
+
+  565                             _save_op 59 
+
+  565.1                                   ENDM
+
+  566                             
+
+  567    0000023E 0EB5            PUSH {R1-R3,LR}
+
+  568                             //нужно ли загрузить ID в R0
+
+  569    00000240 18B9            CBNZ.N R0,svfbi_check_begin
+
+  570    00000242 DFF8D801        LDR.W R0,=pctcon //текущий
+
+  571    00000246 0168            LDR R1,[R0]    //значение указателя
+
+  572    00000248 4869            LDR R0,[R1,#offs_id]
+
+  573                           //поиск контекста  
+
+  574                           svfbi_check_begin:
+
+  575    0000024A DFF8D831          LDR.W R3,=_proot_ //указатель
+
+  576    0000024E 1B68              LDR R3,[R3]   //значение
+
+  577                               
+
+  578                           svfbi_loop_search:
+
+  579    00000250 13B9              CBNZ.N R3,svfbi_cont //не ноль
+
+  580    00000252 4FF00000          MOV R0,#0   //не найден
+
+  581    00000256 05E0              B.N svfbi_ret  //выйти,если больше нет (не
+                                          найден)
+
+  582                               
+
+  583                           svfbi_cont:
+
+  584    00000258 5A69              LDR R2,[R3,#offs_id]
+
+  585    0000025A 8242              CMP R2,R0  
+
+  586    0000025C 1CBF              ITT NE
+
+  587    0000025E DB68              LDRNE R3,[R3,#offs_next]
+
+  588    00000260 F6E7              BNE.N svfbi_loop_search
+
+  589                               //соответствует (R0==R2==id,R3=context)
+
+  590    00000262 1846              MOV R0,R3 //context value
+
+  591                               
+
+  592                           svfbi_ret:
+
+  593    00000264 0EBD            POP {R1-R3,PC}
+
+  594                           //================= вернуть ID потока R0
+                                 =======================================
+                                 
+
+  595                           //если R0==0-загрузить в R0 HTHREAD текущего
+                                 потока (поиск по HTHREAD)
+
+  596                           //ввод/вывод через стек
+
+  597                           //если поток не найден, вернет 0
+
+                                    - tsvc -                          Page   28
+
+  598                           //int svc_get_thread_id(HTHREAD ht_R0,HTHREAD
+                                 ht_outstack_R1);
+
+  599                           svc_get_thread_id: //#10
+
+  600                             _save_op 60
+
+  600.1                                   ENDM
+
+  601                             
+
+  602    00000266 00B5            PUSH {LR}
+
+  603                             
+
+  604    00000268 FFF7B8FF        BL svc_find_by_handle
+
+  605    0000026C 00B9            CBNZ R0,svgti_get_id //найден
+
+  606                             //R==0 == не найден
+
+  607    0000026E 00E0            B.N svgti_ret
+
+  608                             
+
+  609                           svgti_get_id: //return ID
+
+  610    00000270 4069            LDR R0,[R0,#offs_id]
+
+  611                             
+
+  612                           svgti_ret:
+
+  613    00000272 0029            CMP R1,#0
+
+  614    00000274 18BF            IT  NE
+
+  615    00000276 00F03DF8           BLNE  __out_R0_to_stack_R1_ctx
+
+  616    0000027A 00BD            POP {PC}
+
+  617                           //================= вернуть HTHREAD потока с
+                                 ID==R0 ============================
+
+  618                           //если R0==0-загрузить в R0 ID текущeго потока
+                                 (поиск по ID)
+
+  619                           //ввод/вывод через стек
+
+  620                           //если поток не найден, вернет 0
+
+  621                           //HANDLE svc_get_thread_handle(int id,HTHREAD
+                                 ht_outstack_R1);)//return -1=error
+
+  622                           svc_get_thread_handle: //#11
+
+  623                             _save_op 61
+
+  623.1                                   ENDM
+
+  624                             
+
+  625    0000027C 00B5            PUSH {LR}
+
+  626    0000027E FFF7DEFF        BL svc_find_by_ID
+
+  627                             //R!=0 == найден
+
+  628    00000282 0029            CMP R1,#0
+
+  629    00000284 18BF            IT  NE
+
+  630    00000286 00F035F8           BLNE  __out_R0_to_stack_R1_ctx
+
+  631    0000028A 00BD            POP {PC}
+
+  632                           //=============критическая секция,запрет/разре
+                                шение переключения================   
+                                    - tsvc -                          Page   29
+
+
+  633                           svc_EnterCriticalSection: //12
+
+  634                               _save_op 62
+
+  634.1                                   ENDM
+
+  635                               
+
+  636    0000028C 03B4              PUSH {R0,R1}
+
+  637    0000028E 6348              LDR R0,=pctcon //текущий
+
+  638    00000290 0068              LDR R0,[R0]
+
+  639    00000292 D0F81010          LDR.W R1,[R0,#offs_mode] 
+
+  640    00000296 41F48071          ORR.W R1,R1,#(TCRITSECT_Msk)
+
+  641    0000029A C0F81010          STR.W R1,[R0,#offs_mode] 
+
+  642    0000029E 03BC              POP {R0,R1}
+
+  643    000002A0 7047              BX LR
+
+  644                           svc_LeaveCriticalSection: //13
+
+  645                               _save_op 63
+
+  645.1                                   ENDM
+
+  646                               
+
+  647    000002A2 03B4              PUSH {R0,R1}
+
+  648    000002A4 5D48              LDR R0,=pctcon //текущий
+
+  649    000002A6 0068              LDR R0,[R0]
+
+  650    000002A8 D0F81010          LDR.W R1,[R0,#offs_mode] 
+
+  651    000002AC 21F48071          AND.W R1,R1,#(~TCRITSECT_Msk)
+
+  652    000002B0 C0F81010          STR.W R1,[R0,#offs_mode] 
+
+  653    000002B4 03BC              POP {R0,R1}
+
+  654    000002B6 7047              BX LR
+
+  655                           //=============уровень синхронизации
+                                 ядра,запрет/разрешение переключения======== 
+                                 
+
+  656                           svc_disable_SW: //14
+
+  657                               _save_op 64
+
+  657.1                                   ENDM
+
+  658                               
+
+  659    000002B8 03B5              PUSH {R0,R1,LR}
+
+  660    000002BA 5948              LDR R0,=tswFLdis0
+
+  661    000002BC 0168              LDR R1,[R0]
+
+  662    000002BE 41F00101          ORR R1,R1,#1 //1 = запрет переключения
+                                         !
+
+  663    000002C2 0160              STR R1,[R0]
+
+  664    000002C4 03BD              POP {R0,R1,PC}
+
+  665                               
+
+  666                           svc_enable_SW: //15
+
+                                    - tsvc -                          Page   30
+
+  667                               _save_op 65
+
+  667.1                                   ENDM
+
+  668                               
+
+  669    000002C6 03B5              PUSH {R0,R1,LR}
+
+  670    000002C8 5548              LDR R0,=tswFLdis0
+
+  671    000002CA 0168              LDR R1,[R0]
+
+  672    000002CC 21F00101          AND R1,R1,#(~1) //сброс флага запрета
+                                         переключения
+
+  673    000002D0 0160              STR R1,[R0]
+
+  674    000002D2 03BD              POP {R0,R1,PC}
+
+  675                               
+
+  676                           svc_push_SWflags_R0_disable_SW: //16 сохранить
+                                 состояние в R0 и запретить переключения
+
+  677                               _save_op 66 
+
+  677.1                                   ENDM
+
+  678                               
+
+  679    000002D4 06B5              PUSH {R1,R2,LR}
+
+  680    000002D6 5249              LDR R1,=tswFLdis0
+
+  681    000002D8 0868              LDR R0,[R1]
+
+  682    000002DA 40F00102          ORR R2,R0,#1 //1 = запрет переключения
+                                         !
+
+  683    000002DE 0A60              STR R2,[R1]
+
+  684    000002E0 06BD              POP {R1,R2,PC}
+
+  685                           
+
+  686                           svc_pop_SWflags_R0_SW: //17 восстановить
+                                 состояние из R0
+
+  687                               _save_op 67 
+
+  687.1                                   ENDM
+
+  688                               
+
+  689    000002E2 02B5              PUSH {R1,LR}
+
+  690    000002E4 4E49              LDR R1,=tswFLdis0
+
+  691    000002E6 0860              STR R0,[R1]
+
+  692    000002E8 02BD              POP {R1,PC}
+
+  693                           //=======вывод значения R0 из прерываний в
+                                 стек потока с контекстом R1==========
+
+  694                           //в R0-значение для вывода,R1-контекст
+                                 потока
+
+  695                           //если R1==0,то вывод будет в стек текущего
+                                 потока
+
+  696                           __out_R0_to_current_stack_ctx: //вывод в стек
+                                 текущего потока
+
+  697                               _save_op 68 
+
+  697.1                                   ENDM
+
+                                    - tsvc -                          Page   31
+
+  698                               
+
+  699    000002EA 0EB5              PUSH {R1-R3,LR}
+
+  700                           optsctx_ld_cur_t:
+
+  701    000002EC EFF30982          MRS R2,PSP
+
+  702    000002F0 1060              STR R0,[R2]  //R0 в стеке потока на
+                                         вершине
+
+  703    000002F2 0EBD              POP {R1-R3,PC}
+
+  704                               
+
+  705                           __out_R0_to_stack_R1_ctx: //вывод R0 в стек
+                                 указанного контекста потока R1
+
+  706                               _save_op 69 
+
+  706.1                                   ENDM
+
+  707                               
+
+  708    000002F4 0EB5              PUSH {R1-R3,LR}
+
+  709    000002F6 0029              CMP R1,#0
+
+  710    000002F8 F8D0              BEQ.N optsctx_ld_cur_t //0?=load current
+                                            thread
+
+  711    000002FA 484A              LDR R2,=pctcon
+
+  712    000002FC 1368              LDR R3,[R2]
+
+  713    000002FE 9942              CMP R1,R3
+
+  714    00000300 F4D0              BEQ.N optsctx_ld_cur_t //текущий
+
+  715                               
+
+  716    00000302 8A69              LDR R2,[R1,#offs_tstack_PSP]
+
+  717    00000304 1060              STR R0,[R2]  //R0 в стеке потока на
+                                         вершине
+
+  718    00000306 0EBD              POP {R1-R3,PC}
+
+  719                           //=======получение значения вершины стека
+                                 потока с контекстом R1================
+
+  720                           //R1-контекст потока,если R1==0,то это стек
+                                 текущего потока
+
+  721                           __in_R0_current_TOP_stack_ctx: //стек текущего
+                                 потока
+
+  722                               _save_op 70 
+
+  722.1                                   ENDM
+
+  723                               
+
+  724    00000308 0EB5              PUSH {R1-R3,LR}
+
+  725                           iptsctx_ld_cur_t:
+
+  726    0000030A EFF30980          MRS R0,PSP
+
+  727    0000030E 0EBD              POP {R1-R3,PC}
+
+  728                               
+
+  729                           __in_R0_stack_R1_ctx: //получить в R0 стек
+                                 указанного контекста потока R1
+
+  730                               _save_op 71
+
+                                    - tsvc -                          Page   32
+
+  730.1                                   ENDM
+
+  731                               
+
+  732    00000310 0EB5              PUSH {R1-R3,LR}
+
+  733    00000312 0029              CMP R1,#0
+
+  734    00000314 F9D0              BEQ iptsctx_ld_cur_t //0?=load current
+                                          thread
+
+  735    00000316 414A              LDR R2,=pctcon
+
+  736    00000318 1368              LDR R3,[R2]
+
+  737    0000031A 9942              CMP R1,R3
+
+  738    0000031C F5D0              BEQ.N iptsctx_ld_cur_t //текущий
+
+  739                               
+
+  740                           iptsctx_ld_stack_ptr:
+
+  741    0000031E 8869              LDR R0,[R1,#offs_tstack_PSP]
+
+  742    00000320 0EBD              POP {R1-R3,PC}
+
+  743                           //===========запись параметров синхронизации в
+                                 контекст потока================== 
+
+  744                           /*
+
+  745                           параметры переданы через стек потока
+                                 :
+
+  746                           R0=SYNC_PAR*
+
+  747                           typedef struct
+
+  748                           {
+
+  749                             HANDLE   ctx;       //R1 контекст потока
+
+  750                             uint32_t flags;     //R2 флаги CF_WAIT_ALL|C
+                                F_WAIT_MULTIPLE
+
+  751                             HANDLE*  sync;      //R3 массив списка
+                                 синхронизации (массив указателей на объекты)
+
+  752                             uint32_t sync_size; //R4 количество объектов
+                                 синхронизации
+
+  753                             uint32_t wait_ms;   //R5 время ожидания
+                                 сигнального состояния объектов синхронизации
+
+  754                           }SYNC_PAR;
+
+  755                           */
+
+  756                           svc_save_thread_sync_parameters: //svc
+                                 #19
+
+  757                               _save_op 71
+
+  757.1                                   ENDM
+
+  758                               //R0-R3 извлечены в IT SVcall !
+
+  759    00000322 3FB5              PUSH {R0-R5,LR}
+
+  760                               //R0 on top, R0=*SYNC_PAR
+
+  761                               
+
+  762    00000324 90E83E00          LDM R0,{R1-R5}
+
+  763    00000328 0029              CMP R1,#0
+
+                                    - tsvc -                          Page   33
+
+  764    0000032A 04BF              ITT EQ
+
+  765    0000032C 3B49              LDREQ R1,=pctcon
+
+  766    0000032E 0968              LDREQ R1,[R1]
+
+  767                               
+
+  768    00000330 4B60              STR R3,[R1,#offs_sync]
+
+  769    00000332 4C63              STR R4,[R1,#offs_sync_size]
+
+  770    00000334 0D63              STR R5,[R1,#offs_wait_ms]
+
+  771                               
+
+  772                               //-------------------------------------
+
+  773    00000336 4888              LDRH   R0,[R1,#offs_flags] //core
+                                            object
+
+  774    00000338 002D              CMP    R5,#0
+
+  775    0000033A 18BF              IT     NE // !0
+
+  776    0000033C 20F00100          ANDNE  R0,R0,#(~CF_SIGNAL)  //поток не
+                                            активен,если wait_ms>0
+
+  777                               
+
+  778    00000340 0D8A              LDRH   R5,[R1,#offs_mode] //core object
+
+  779    00000342 05F40075          AND    R5,R5,#(TM_CREATE_SUSPENDED)
+                                            
+
+  780    00000346 002D              CMP    R5,#0
+
+  781    00000348 18BF              IT     NE // !0
+
+  782    0000034A 20F00100          ANDNE  R0,R0,#(~CF_SIGNAL)  //поток не
+                                            активен,если TM_CREATE_SUSPENDED
+
+  783                               //-------------------------------------
+
+  784    0000034E 20F44040          AND R0,R0,#(~(CF_TIMEOUT | CF_ABANDONED))
+
+  785    00000352 02F00603          AND R3,R2,#(CF_WAIT_ALL|CF_WAIT_MULTIPLE)
+
+  786    00000356 20F00600          AND R0,R0,#(~(CF_WAIT_ALL|CF_WAIT_MULTIPLE)
+                                        )
+
+  787    0000035A 40EA0300          ORR R0,R0,R3 //флаги
+
+  788                               
+
+  789    0000035E 4880              STRH R0,[R1,#offs_flags]
+
+  790                               
+
+  791    00000360 3FBD              POP  {R0-R5,PC}
+
+  792                           //============================================
+                                ==================================
+
+  793                           /*
+
+  794                           параметры переданы через стек потока :R0=
+                                 object,R1=thread 
+
+  795                           Mutex:освобождает один раз
+
+  796                           Semaphore: count++
+
+  797                           вернет TRUE,если успешно,если указан поток для
+                                 вывода в стек
+
+  798                           BOOL      call_rls_object(PCOREOBJ pco_R0,HTHR
+                                EAD ht_R1);
+                                    - tsvc -                          Page   34
+
+
+  799                           */
+
+  800                           svc_ReleaseObject: //svc #20
+
+  801                               _save_op 72
+
+  801.1                                   ENDM
+
+  802                               //R0-R3 извлечены из стека при входе в
+                                 SVcall.
+
+  803    00000362 0FB5              PUSH {R0-R3,LR}
+
+  804    00000364 FFF73AFF          BL   svc_find_by_handle //(R0)
+
+  805    00000368 18B1              CBZ  R0,relobj_ret //не найден
+
+  806                               //------
+
+  807    0000036A 02B4              PUSH {R1} 
+
+  808    0000036C ........          BL _rls_object //R0=TRUE/FALSE
+
+  809    00000370 02BC              POP {R1}
+
+  810                               //------
+
+  811                           relobj_ret:
+
+  812    00000372 0029              CMP R1,#0 //вывод в стек потока R1
+                                         ?
+
+  813    00000374 18BF              IT NE
+
+  814    00000376 FFF7BDFF            BLNE __out_R0_to_stack_R1_ctx
+
+  815    0000037A 0FBD              POP {R0-R3,PC}
+
+  816                           //====================изменить флаги объекта
+                                 ядра=======================
+
+  817                           /* #21
+
+  818                           HANDLE    call_change_core_object_flags(PCOREO
+                                BJ pco_R0,uint16_t flags_R1,uint8_t SET_RESET_R
+                                2,HTHREAD ht_R3);
+
+  819                            R0=объект ядра R1=(uint16_t)flags, R2=SET/RES
+                                ET, R3=поток для вывода.Если не указан-вывода
+                                 не будет.
+
+  820                            параметры переданы в стеке
+
+  821                            вернет дескриптор в стеке,если успешно.
+
+  822                            */
+
+  823                           svc_change_core_obj_flags:
+
+  824                               _save_op 73
+
+  824.1                                   ENDM
+
+  825                               //R0-R3 извлечены в SVcall при входе.
+
+  826    0000037C 0FB5              PUSH {R0-R3,LR}
+
+  827    0000037E FFF72DFF          BL svc_find_by_handle
+
+  828    00000382 40B1              CBZ R0,svcchcof_ret //не найден
+
+  829                               //------
+
+  830    00000384 4388              LDRH  R3,[R0,#offs_flags]
+
+  831    00000386 12B1              CBZ.N R2,svcchcof_reset
+
+                                    - tsvc -                          Page   35
+
+  832    00000388 43EA0103          ORR   R3,R3,R1 //R3=R3 | R1
+
+  833    0000038C 01E0              B.N   svcchcof_save
+
+  834                               //------
+
+  835                           svcchcof_reset:
+
+  836    0000038E 23EA0103          BIC   R3,R3,R1 //R3=R3 & ~R1
+
+  837                               //------
+
+  838                           svcchcof_save:
+
+  839    00000392 C0F80230          STR R3,[R0,#offs_flags]
+
+  840                               
+
+  841                           svcchcof_ret:
+
+  842    00000396 0FBC              POP {R0-R3}
+
+  843                               
+
+  844    00000398 002B              CMP R3,#0 //вывод в стек потока R3
+                                         ?
+
+  845    0000039A 1CBF              ITT NE
+
+  846    0000039C 1946                MOVNE R1,R3
+
+  847    0000039E FFF7A9FF            BLNE __out_R0_to_stack_R1_ctx
+
+  848                                 
+
+  849    000003A2 00BD              POP{PC}
+
+  850                           //============================================
+                                ==================================
+
+  851                           svc_new_thread: //31
+
+  852                           
+
+  853                               _save_op 74 
+
+  853.1                                   ENDM
+
+  854                           /*
+
+  855                            HANDLE    svc_new_thread(uint32_t args,HTHREA
+                                D ht_R1);//only core accept
+
+  856                            создание нового потока (процесса)  
+
+  857                            R0==param {+0:(uint32_t)pFunc,+4:(uint32_t)pA
+                                rgs,+8:(uint32_t)pCTX}; (в стеке)
+
+  858                            [17FPU regs] PSR PC LR R12 R3 R2 R1 R0  
+                                 
+
+  859                            R1=поток для вывода
+
+  860                           */
+
+  861                                   //R0-R3 извлечены при входе в
+                                 прерывание SVcall
+
+  862    000003A4 2DE90F50              PUSH {R0-R3,R12,LR}
+
+  863                                   //подготовка нового контекста
+                                 //FFFFFFF8=8 align FFFFFFFC=4
+
+  864    000003A8 8168                  LDR R1,[R0,#8]  //указатель на контекст
+                                             pCTX
+
+  865    000003AA 8B69                  LDR R3,[R1,#offs_tstack_PSP] //указател
+                                            ь SP
+                                    - tsvc -                          Page   36
+
+
+  866    000003AC 23F00703              AND R3,R3,#~7  // align down 8
+
+  867    000003B0 A3F16803              SUB R3,R3,#104 //-26 * 4 (with
+                                             FPU)
+
+  868                                   //----требуется сохранение контекста
+                                 FPU?--------;
+
+  869    000003B4 0A69                  LDR R2,[R1,#offs_mode]
+
+  870    000003B6 12F00402              ANDS R2,R2,#TM_FPU 
+
+  871    000003BA 03D0                  BEQ svnt_push8regs //0==no FPU
+
+  872    000003BC F1EE102A                VMRS R2,FPSCR
+
+  873    000003C0 C3F86020                STR.W R2,[R3,#96] //1 reg FPSCR
+
+  874                               /*     MOV       LR,R3
+
+  875                                     ADD.W     LR,LR,#32 //{S0-S15}
+                                 смещение в кадре
+
+  876                                     VSTMIA.W  LR!,{S0-S15} //==VPUSH
+                                 {S0-S15},16regs  
+
+  877                               */      
+
+  878                           svnt_push8regs:
+
+  879                                   //SUB R3,R3,#32 //CPU STACK SIZE
+
+  880                                   //PSR-------переписать PSR(бит
+                                 9=выравнивание)
+
+  881    000003C4 194A                  LDR R2,=SCB_CCR_REG//=0xE000ED14 = 8b
+                                             align else 4b align
+
+  882    000003C6 1268                  LDR R2,[R2] //bit 9
+
+  883    000003C8 42F08072              ORR R2,R2,#0x1000000 //24 bit(THUMB)
+
+  884                                   //PUSH {R2} //PSR=0/0x200
+
+  885    000003CC C3F81C20              STR.W R2,[R3,#28] //1 reg FPSCR
+
+  886                                   //PC----------------        
+
+  887                                   //бит 0 должен быть установлен!(Thumb)
+
+  888    000003D0 174A                  LDR R2,=tfunc_wrapper
+
+  889    000003D2 C3F81820              STR.W R2,[R3,#24] //1 reg PC
+
+  890                                   //LR----------------
+
+  891    000003D6 174A                  LDR R2,=twrap_del
+
+  892    000003D8 C3F81420              STR.W R2,[R3,#20] //1 reg LR=twrap_del
+
+  893                                   
+
+  894    000003DC 09B4                  PUSH {R0,R3}
+
+  895                                   
+
+  896                                   //other registers: R1=func R0=arg
+                                 R2=ctx
+
+  897    000003DE 0168                  LDR R1,[R0]     //pFunc
+
+  898    000003E0 8268                  LDR R2,[R0,#8]  //PCX == thread
+                                             context
+
+  899    000003E2 4068                  LDR R0,[R0,#4]  //args for pFunc
+
+  900                                   
+                                    - tsvc -                          Page   37
+
+
+  901    000003E4 9E46                  MOV LR,R3
+
+  902    000003E6 AEE80F10              STMIA.W LR!,{R0-R3,R12} //5 regs
+                                               
+
+  903                                   
+
+  904    000003EA 09BC                  POP {R0,R3}
+
+  905                                     
+
+  906                                   //сохранение вершины стека
+
+  907    000003EC 8168                  LDR R1,[R0,#8]  //указатель на контекст
+                                             pCTX
+
+  908    000003EE 8B61                  STR R3,[R1,#offs_tstack_PSP]    
+                                             
+
+  909                                   
+
+  910    000003F0 0FBC                  POP {R0-R3}
+
+  911                                   //----подключение потока в список-----
+
+  912    000003F2 8068                  LDR R0,[R0,#8]  //указатель на контекст
+                                             CTX
+
+  913                           //PCOREOBJ core_add_CoreObj(PCOREOBJ
+                                 pobj,HANDLE ht_R1)//добавить в список ядра
+                                 объект ядра
+
+  914    000003F4 ........              BL core_add_CoreObj//добавить в список
+                                            ядра объект ядра + вывод
+
+  915                                   
+
+  916    000003F8 BDE80090              POP {R12,PC} //извлечь остальное
+
+  917                           //=========принудительное переключение
+                                 контекста потока на R0======       
+
+  918                           svc_sw_thread_to_R0: //#32
+
+  919                               _save_op 75
+
+  919.1                                   ENDM
+
+  920                               
+
+  921    000003FC 00B5              PUSH {LR}
+
+  922                           //сохранить текущий и восстановить новый
+
+  923                               //LDR R1, =pctcon //dbg
+
+  924                               //LDR R1,[R1]
+
+  925                               //LDR R1,[R1,#offs_id] //DBG
+
+  926    000003FE 0028              CMP R0,#0
+
+  927    00000400 00D1              BNE.N svc_sw_t_sw
+
+  928                               
+
+  929    00000402 FEE7          errloop1: B errloop1 //R0==0 !
+
+  930                           
+
+  931                           svc_sw_t_sw:    
+
+  932    00000404 ........          BL sub_switch_context_to_R0_ 
+
+  933                               
+
+  934    00000408 00BD              POP {PC}
+                                    - tsvc -                          Page   38
+
+
+  935                           //============================================
+                                ==================================
+
+  936                           svc_scan_tasklist: //#33 просканировать список
+                                 задач
+
+  937    0000040A 00B5              PUSH {LR}
+
+  938    0000040C ........          BL core_scan_tasklist
+
+  939    00000410 00BD              POP {PC}
+
+  940                           //============================================
+                                ==================================
+
+  940.1                                  TABLE
+
+  940.2  00000414 ........              Reference on line 219
+
+  940.3  00000418 ........              Reference on line 223
+
+  940.4  0000041C ........              Reference on line 227,244,265,273,378,3
+                                            94,439,499,570,637,648,711,735,765
+
+  940.5  00000420 ........              Reference on line 420,660,670,680,690
+
+  940.6  00000424 ........              Reference on line 503,535,575
+
+  940.7  00000428 ........              Reference on line 510,542
+
+  940.8  0000042C 14ED00E0              Reference on line 881
+
+  940.9  00000430 ........              Reference on line 888
+
+  940.10 00000434 ........              Reference on line 891
+
+  941                                   END
+
+
+
+
+
+EOF                  DELIMITER 
+
+\n                   DELIMITER 
+
+                     DELIMITER 
+
+!                    OPERATOR 
+
+!=                   OPERATOR 
+
+%                    OPERATOR 
+
+&                    OPERATOR 
+
+&&                   OPERATOR 
+
+(                    OPERATOR 
+
+(                    DELIMITER 
+
+)                    OPERATOR 
+
+)                    DELIMITER 
+
+*                    OPERATOR 
+
++                    OPERATOR 
+
+,                    DELIMITER 
+
+-                    OPERATOR 
+
+.                    Target symbol: 24 
+
+/                    OPERATOR 
+                                    - tsvc -                          Page   39
+
+
+/                    DELIMITER 
+
+:                    Target symbol: 22 
+
+:                    DELIMITER 
+
+;                    Target symbol: 23 
+
+<                    OPERATOR 
+
+<<                   OPERATOR 
+
+<=                   OPERATOR 
+
+<>                   OPERATOR 
+
+=                    OPERATOR 
+
+=                    DIRECTIVE 
+
+==                   OPERATOR 
+
+>                    OPERATOR 
+
+>=                   OPERATOR 
+
+>>                   OPERATOR 
+
+@                    DELIMITER 
+
+AAPCS                DIRECTIVE 
+
+ACTLR_OFFSET         #define, value: 0x008, line:     234:1  
+
+ALIAS                DIRECTIVE 
+
+ALIGN                DIRECTIVE 
+
+ALIGNRAM             DIRECTIVE 
+
+ALIGNROM             DIRECTIVE 
+
+ANOTE                DIRECTIVE 
+
+APSR_NZCV            REGISTER 
+
+ARGFRAME             DIRECTIVE 
+
+ARM                  DIRECTIVE 
+
+ASEGN                DIRECTIVE 
+
+ASR                  MNEMONIC 
+
+BIT                  SEGMENT TYPE 
+
+BYTE1                OPERATOR 
+
+BYTE2                OPERATOR 
+
+BYTE3                OPERATOR 
+
+BYTE4                OPERATOR 
+
+C0                   REGISTER 
+
+C1                   REGISTER 
+
+C10                  REGISTER 
+
+C11                  REGISTER 
+
+C12                  REGISTER 
+
+C13                  REGISTER 
+
+C14                  REGISTER 
+                                    - tsvc -                          Page   40
+
+
+C15                  REGISTER 
+
+C2                   REGISTER 
+
+C3                   REGISTER 
+
+C4                   REGISTER 
+
+C5                   REGISTER 
+
+C6                   REGISTER 
+
+C7                   REGISTER 
+
+C8                   REGISTER 
+
+C9                   REGISTER 
+
+CALL_GRAPH_ROOT      DIRECTIVE 
+
+CASEOFF              DIRECTIVE 
+
+CASEON               DIRECTIVE 
+
+CBREL                OPERATOR 
+
+CBREL_NEAR           OPERATOR 
+
+CFI                  DIRECTIVE 
+
+CF_ABANDONED         #define, value: 0x4000, line:     221:1        784
+
+CF_AUTORESET         #define, value: 8, line:     214:1  
+
+CF_CAPTSTATE         #define, value: 0x2000, line:     220:1  
+
+CF_PASSIVE           #define, value: 0, line:     208:1  
+
+CF_PLAIN             #define, value: 0, line:     216:1  
+
+CF_RECURSIVE         #define, value: 16, line:     217:1  
+
+CF_SIGNAL            #define, value: 1, line:     209:1        430      472      776      782
+
+CF_TIMED             #define, value: 32, line:     218:1  
+
+CF_TIMEOUT           #define, value: 0x8000, line:     222:1        429      784
+
+CF_WAIT_ALL          #define, value: 2, line:     211:1        785      786
+
+CF_WAIT_MULTIPLE     #define, value: 4, line:     212:1        785      786
+
+CODE                 SEGMENT TYPE 
+
+CODE                 DIRECTIVE 
+
+CODE16               DIRECTIVE 
+
+CODE32               DIRECTIVE 
+
+COL                  DIRECTIVE 
+
+CONST                SEGMENT TYPE 
+
+CORE_DBG_LEN         #define, value: 8, line:      26:1  
+
+CORE_DBG_OPERATION   #define, value: 0, line:      25:1         15      160
+
+CORE_IT_PRIO_GROUP   #define, value: 3, line:      34:1  
+
+CORE_MPU_PROTECTION  #define, value: 0, line:      18:1  
+
+CORE_NVIC_PriorityGroup #define, value: NVIC_PriorityGroup_2, line:      33:1  
+
+CoreDebug_BASE       #define, value: (0xE000EDF0UL), line:     227:1  
+
+D0                   REGISTER 
+                                    - tsvc -                          Page   41
+
+
+D1                   REGISTER 
+
+D10                  REGISTER 
+
+D11                  REGISTER 
+
+D12                  REGISTER 
+
+D13                  REGISTER 
+
+D14                  REGISTER 
+
+D15                  REGISTER 
+
+D2                   REGISTER 
+
+D3                   REGISTER 
+
+D4                   REGISTER 
+
+D5                   REGISTER 
+
+D6                   REGISTER 
+
+D7                   REGISTER 
+
+D8                   REGISTER 
+
+D9                   REGISTER 
+
+DATA                 SEGMENT TYPE 
+
+DATA                 DIRECTIVE 
+
+DATE                 OPERATOR 
+
+DC16                 DIRECTIVE 
+
+DC24                 DIRECTIVE 
+
+DC32                 DIRECTIVE 
+
+DC8                  DIRECTIVE 
+
+DCB                  DIRECTIVE 
+
+DCD                  DIRECTIVE 
+
+DCREL32              DIRECTIVE 
+
+DCW                  DIRECTIVE 
+
+DEFAULT_TSTACK_SIZE  #define, value: 0x1000, line:      21:1  
+
+DEFINE               DIRECTIVE 
+
+DF32                 DIRECTIVE 
+
+DF64                 DIRECTIVE 
+
+DISABLE_MCU_BUFFERING_MODE #define, value: 0, line:      17:1  
+
+DS16                 DIRECTIVE 
+
+DS24                 DIRECTIVE 
+
+DS32                 DIRECTIVE 
+
+DS8                  DIRECTIVE 
+
+ELSE                 DIRECTIVE 
+
+ELSEIF               DIRECTIVE 
+
+ENABLE_MULTITHREADING #define, value: 1, line:      16:1  
+
+ENABLE_STACK_CHECK_DEBUG #define, value: 0, line:      24:1  
+                                    - tsvc -                          Page   42
+
+
+ENABLE_USE_FPU       #define, value: 1, line:      15:1  
+
+END                  DIRECTIVE 
+
+ENDIF                DIRECTIVE 
+
+ENDM                 DIRECTIVE 
+
+ENDMOD               DIRECTIVE 
+
+ENDR                 DIRECTIVE 
+
+EQU                  DIRECTIVE 
+
+ERR_EXC_RET          #define, value: 1, line:     267:1  
+
+ERR_IT_STATE         #define, value: 64, line:     275:1  
+
+ERR_LO_STACK_LIM     #define, value: 4, line:     271:1  
+
+ERR_NOT_FOUND        #define, value: 16, line:     273:1  
+
+ERR_OUT_OF_MEMORY    #define, value: 32, line:     274:1  
+
+ERR_STACK_LIM        #define, value: 6, line:     269:1  
+
+ERR_UP_STACK_LIM     #define, value: 2, line:     270:1  
+
+ERR_ZERO_PTR         #define, value: 8, line:     272:1  
+
+EVEN                 DIRECTIVE 
+
+EXCEPTION_CODE       DIRECTIVE 
+
+EXC_RET_BASE         #define, value: 0xFFFFFFE1, line:     121:1  
+
+EXC_RET_HALDLER      #define, value: 0, line:     130:1  
+
+EXC_RET_HALDLER_MSP  #define, value: 0xFFFFFFF1, line:     123:1  
+
+EXC_RET_MSP          #define, value: 0, line:     127:1  
+
+EXC_RET_NOFPU        #define, value: 16, line:     133:1  
+
+EXC_RET_PSP          #define, value: 4, line:     128:1  
+
+EXC_RET_THREAD       #define, value: 8, line:     131:1  
+
+EXC_RET_THREAD_MSP   #define, value: 0xFFFFFFF9, line:     124:1  
+
+EXC_RET_THREAD_PSP   #define, value: 0xFFFFFFFB, line:     125:1  
+
+EXC_RET_USEFPU       #define, value: 0, line:     134:1  
+
+EXC_RET_USE_BITMSK   #define, value: 0x1F, line:     119:1  
+
+EXITM                DIRECTIVE 
+
+EXPORT               DIRECTIVE 
+
+EXTERN               DIRECTIVE 
+
+EXTWEAK              DIRECTIVE 
+
+FAR                  SEGMENT TYPE 
+
+FARCODE              SEGMENT TYPE 
+
+FARCONST             SEGMENT TYPE 
+
+FARDATA              SEGMENT TYPE 
+
+FPEXC                REGISTER 
+
+FPINST               REGISTER 
+
+FPINST2              REGISTER 
+                                    - tsvc -                          Page   43
+
+
+FPSCR                REGISTER 
+
+FPSID                REGISTER 
+
+FUNCALL              DIRECTIVE 
+
+FUNCTION             DIRECTIVE 
+
+HIGH                 OPERATOR 
+
+HUGE                 SEGMENT TYPE 
+
+HUGECODE             SEGMENT TYPE 
+
+HUGECONST            SEGMENT TYPE 
+
+HUGEDATA             SEGMENT TYPE 
+
+HWRD                 OPERATOR 
+
+ICTR_OFFSET          #define, value: 0x004, line:     233:1  
+
+IDATA                SEGMENT TYPE 
+
+IF                   DIRECTIVE 
+
+IMPORT               DIRECTIVE 
+
+INCLUDE              DIRECTIVE 
+
+INFINITE             #define, value: (0xFFFFFFFFUL), line:     279:1  
+
+ITM_BASE             #define, value: (0xE0000000UL), line:     226:1  
+
+LIBRARY              DIRECTIVE 
+
+LOCAL                DIRECTIVE 
+
+LOCFRAME             DIRECTIVE 
+
+LOW                  OPERATOR 
+
+LR                   REGISTER 
+
+LSL                  MNEMONIC 
+
+LSR                  MNEMONIC 
+
+LSTCND               DIRECTIVE 
+
+LSTCOD               DIRECTIVE 
+
+LSTEXP               DIRECTIVE 
+
+LSTMAC               DIRECTIVE 
+
+LSTOUT               DIRECTIVE 
+
+LSTPAG               DIRECTIVE 
+
+LSTREP               DIRECTIVE 
+
+LSTXRF               DIRECTIVE 
+
+LTORG                DIRECTIVE 
+
+LWRD                 OPERATOR 
+
+MACRO                DIRECTIVE 
+
+MAX_MSP_STACK_TOP    #define, value: 0x200FFFFF, line:      20:1  
+
+MODULE               DIRECTIVE 
+
+MVFR0                REGISTER 
+
+MVFR1                REGISTER 
+                                    - tsvc -                          Page   44
+
+
+NAME                 DIRECTIVE 
+
+NEAR                 SEGMENT TYPE 
+
+NEARCODE             SEGMENT TYPE 
+
+NEARCONST            SEGMENT TYPE 
+
+NEARDATA             SEGMENT TYPE 
+
+NOALLOC              SEGMENT TYPE 
+
+NOCALL               DIRECTIVE 
+
+NOROOT               SEGMENT TYPE 
+
+NPAGE                SEGMENT TYPE 
+
+NVIC_BASE            #define, value: (SCS_BASE + 0x0100UL), line:     229:1  
+
+NVIC_BASE_ADR        #define, value: 0xE000E100, line:     144:1  
+
+NVIC_INT_CTRL_CONST  #define, value: 0xE000ED04, line:     282:1  
+
+NVIC_PriorityGroup_2 Target symbol: 0 
+
+ODD                  DIRECTIVE 
+
+P0                   REGISTER 
+
+P1                   REGISTER 
+
+P10                  REGISTER 
+
+P11                  REGISTER 
+
+P12                  REGISTER 
+
+P13                  REGISTER 
+
+P14                  REGISTER 
+
+P15                  REGISTER 
+
+P2                   REGISTER 
+
+P3                   REGISTER 
+
+P4                   REGISTER 
+
+P5                   REGISTER 
+
+P6                   REGISTER 
+
+P7                   REGISTER 
+
+P8                   REGISTER 
+
+P9                   REGISTER 
+
+PAGE                 DIRECTIVE 
+
+PAGSIZ               DIRECTIVE 
+
+PC                   REGISTER 
+
+PRESERVE8            DIRECTIVE 
+
+PROGRAM              DIRECTIVE 
+
+PUBLIC               DIRECTIVE 
+
+PUBWEAK              DIRECTIVE 
+
+R0                   REGISTER 
+
+R1                   REGISTER 
+                                    - tsvc -                          Page   45
+
+
+R10                  REGISTER 
+
+R11                  REGISTER 
+
+R12                  REGISTER 
+
+R13                  REGISTER 
+
+R14                  REGISTER 
+
+R15                  REGISTER 
+
+R2                   REGISTER 
+
+R3                   REGISTER 
+
+R4                   REGISTER 
+
+R5                   REGISTER 
+
+R6                   REGISTER 
+
+R7                   REGISTER 
+
+R8                   REGISTER 
+
+R9                   REGISTER 
+
+RADIX                DIRECTIVE 
+
+RCC_APB1PeriphClockCmd Target symbol: 0 
+
+RCC_APB1Periph_TIM2  Target symbol: 0 
+
+REGISTER             SEGMENT TYPE 
+
+RELOC_ARM_PREL31     OPERATOR 
+
+RELOC_ARM_TARGET1    OPERATOR 
+
+RELOC_ARM_TARGET2    OPERATOR 
+
+RELOC_LOCAL          OPERATOR 
+
+REORDER              SEGMENT TYPE 
+
+REPT                 DIRECTIVE 
+
+REPTC                DIRECTIVE 
+
+REPTI                DIRECTIVE 
+
+REQUIRE              DIRECTIVE 
+
+REQUIRE8             DIRECTIVE 
+
+ROOT                 SEGMENT TYPE 
+
+ROR                  MNEMONIC 
+
+RRX                  MNEMONIC 
+
+RSEG                 DIRECTIVE 
+
+RTMODEL              DIRECTIVE 
+
+S0                   REGISTER 
+
+S1                   REGISTER 
+
+S10                  REGISTER 
+
+S11                  REGISTER 
+
+S12                  REGISTER 
+
+S13                  REGISTER 
+                                    - tsvc -                          Page   46
+
+
+S14                  REGISTER 
+
+S15                  REGISTER 
+
+S16                  REGISTER 
+
+S17                  REGISTER 
+
+S18                  REGISTER 
+
+S19                  REGISTER 
+
+S2                   REGISTER 
+
+S20                  REGISTER 
+
+S21                  REGISTER 
+
+S22                  REGISTER 
+
+S23                  REGISTER 
+
+S24                  REGISTER 
+
+S25                  REGISTER 
+
+S26                  REGISTER 
+
+S27                  REGISTER 
+
+S28                  REGISTER 
+
+S29                  REGISTER 
+
+S3                   REGISTER 
+
+S30                  REGISTER 
+
+S31                  REGISTER 
+
+S4                   REGISTER 
+
+S5                   REGISTER 
+
+S6                   REGISTER 
+
+S7                   REGISTER 
+
+S8                   REGISTER 
+
+S9                   REGISTER 
+
+SBREL                OPERATOR 
+
+SBREL_NEAR           OPERATOR 
+
+SCB_BASE             #define, value: (SCS_BASE + 0x0D00UL), line:     230:1  
+
+SCB_CCR_REG          #define, value: 0xE000ED14, line:     251:1        881
+
+SCB_ICSR_OFFSET      #define, value: 0x004, line:     259:1  
+
+SCB_ICSR_PENDSVCLR_BitPos #define, value: 27, line:     264:1  
+
+SCB_ICSR_PENDSVCLR_MskVal #define, value: (1UL << SCB_ICSR_PENDSVCLR_BitPos), line:     265:1  
+
+SCB_ICSR_PENDSVSET_BitPos #define, value: 28, line:     261:1  
+
+SCB_ICSR_PENDSVSET_MskVal #define, value: (1UL << SCB_ICSR_PENDSVSET_BitPos), line:     262:1  
+
+SCB_SHCSR_SVCALLPENDED_BitPos #define, value: 15, line:     256:1  
+
+SCB_SHCSR_SVCALLPENDED_MskVal #define, value: (1UL << SCB_SHCSR_SVCALLPENDED_BitPos), line:     257:1  
+
+SCS_BASE             #define, value: (0xE000E000UL), line:     225:1  
+
+SCnSCB_ACTLR_DISDEFWBUF_BitPos #define, value: 1, line:     237:1  
+                                    - tsvc -                          Page   47
+
+
+SCnSCB_ACTLR_DISDEFWBUF_MskVal #define, value: (1UL << SCnSCB_ACTLR_DISDEFWBUF_BitPos), line:     238:1  
+
+SCnSCB_ACTLR_DISMCYCINT_BitPos #define, value: 0, line:     240:1  
+
+SCnSCB_ACTLR_DISMCYCINT_MskVal #define, value: (1UL << SCnSCB_ACTLR_DISMCYCINT_BitPos), line:     241:1  
+
+SECTION              DIRECTIVE 
+
+SECTION_GROUP        DIRECTIVE 
+
+SECTION_LINK         DIRECTIVE 
+
+SECTION_TYPE         DIRECTIVE 
+
+SET                  DIRECTIVE 
+
+SETA                 DIRECTIVE 
+
+SFB                  OPERATOR 
+
+SFE                  OPERATOR 
+
+SFS                  OPERATOR 
+
+SHCSR_OFFSET         #define, value: 0x24, line:     248:1  
+
+SHPR2_OFFSET         #define, value: 0x1C, line:     245:1  
+
+SHPR_OFFSET          #define, value: 0x18, line:     244:1  
+
+SIZEOF               OPERATOR 
+
+SORT                 SEGMENT TYPE 
+
+SP                   REGISTER 
+
+STKALIGN_VAL         #define, value: 0x200, line:     254:1  
+
+SysTick_BASE         #define, value: (SCS_BASE + 0x0010UL), line:     228:1  
+
+TCRITSECT_BIT_Pos    #define, value: 8, line:      69:1        640      651
+
+TCRITSECT_Msk        #define, value: (1UL << TCRITSECT_BIT_Pos), line:      70:1        640      651
+
+TFPU_MODE_BIT_Pos    #define, value: 2, line:      63:1        870
+
+TFPU_MODE_Msk        #define, value: (1UL << TFPU_MODE_BIT_Pos), line:      64:1        870
+
+THUMB                DIRECTIVE 
+
+THUMBX               DIRECTIVE 
+
+TIM2                 Target symbol: 0 
+
+TIM2_IRQHandler      Target symbol: 0 
+
+TIM2_IRQn            Target symbol: 0 
+
+TIMx_DIER_OFFSET     #define, value: 0x0C, line:     142:1  
+
+TIMx_SR_OFFSET       #define, value: 0x10, line:     141:1  
+
+TMMRAM_CTX_BIT_Pos   #define, value: 11, line:      79:1  
+
+TMMRAM_CTX_Msk       #define, value: (1UL << TMMRAM_CTX_BIT_Pos), line:      80:1  
+
+TMMRAM_STACK_BIT_Pos #define, value: 12, line:      82:1  
+
+TMMRAM_STACK_Msk     #define, value: (1UL << TMMRAM_STACK_BIT_Pos), line:      83:1  
+
+TM_CREATE_SUSPENDED  #define, value: TSUSPENDED_Msk, line:     102:1        470      475      477      779
+
+TM_FPU               #define, value: TFPU_MODE_Msk, line:     100:1        870
+
+TM_MSP               #define, value: 0, line:      90:1  
+
+TM_NFPU              #define, value: 0, line:      99:1  
+                                    - tsvc -                          Page   48
+
+
+TM_NPRIV             #define, value: TPRIV_Msk, line:      88:1        381      397
+
+TM_PRIV              #define, value: 0, line:      87:1  
+
+TM_PSP               #define, value: TSTACK_MODE_Msk, line:      91:1  
+
+TM_SET_STACK_SIZE    #define, value: TSTACKSIZE_Msk, line:     103:1  
+
+TPENDSV_IT_PRIO      #define, value: CORE_IT_PRIO_GROUP, line:      48:1  
+
+TPENDSV_IT_PRIO_SUB  #define, value: 2, line:      53:1  
+
+TPRIO_BIT_Pos        #define, value: 3, line:      66:1        333      334      339      342
+                                                                      345
+
+TPRIO_Msk            #define, value: (31UL << TPRIO_BIT_Pos), line:      67:1        333      342
+
+TPRIV_BIT_Pos        #define, value: 0, line:      57:1        381      397
+
+TPRIV_Msk            #define, value: (1UL << TPRIV_BIT_Pos), line:      58:1        381      397
+
+TSTACKSIZE_BIT_Pos   #define, value: 10, line:      75:1  
+
+TSTACKSIZE_Msk       #define, value: (1UL << TSTACKSIZE_BIT_Pos), line:      76:1  
+
+TSTACK_MODE_BIT_Pos  #define, value: 1, line:      60:1  
+
+TSTACK_MODE_Msk      #define, value: (1UL << TSTACK_MODE_BIT_Pos), line:      61:1  
+
+TSUSPENDED_BIT_Pos   #define, value: 9, line:      72:1        470      475      477      779
+
+TSUSPENDED_Msk       #define, value: (1UL << TSUSPENDED_BIT_Pos), line:      73:1        470      475      477      779
+
+TSVCALL_IT_PRIO      #define, value: CORE_IT_PRIO_GROUP, line:      47:1  
+
+TSVCALL_IT_PRIO_SUB  #define, value: 0, line:      52:1  
+
+TSV_TIMER            #define, value: TIM2, line:     138:1  
+
+TSV_TIMER_APBPeriph  #define, value: RCC_APB1Periph_TIM2, line:     152:1  
+
+TSV_TIMER_ARR_1MS    #define, value: ((uint16_t)42000), line:     154:1  
+
+TSV_TIMER_BASE_ADR   #define, value: 0x40000000, line:     139:1  
+
+TSV_TIMER_IRQ        #define, value: TIM2_IRQn, line:     156:1  
+
+TSV_TIMER_IRQ_HNDLR  #define, value: TIM2_IRQHandler, line:     157:1  
+
+TSV_TIMER_PSC_1MS    #define, value: ((uint16_t)2), line:     153:1  
+
+TSV_TIMER_RCC_APBCmd #define, value: RCC_APB1PeriphClockCmd, line:     151:1  
+
+TSV_TIME_MS          #define, value: 1, line:      44:1  
+
+TSV_TIM_NVIC_BIT     #define, value: 29, line:     148:1  
+
+TSV_TIM_NVIC_ICER_OFS #define, value: 0x080, line:     147:1  
+
+TSV_TIM_NVIC_ISER_OFS #define, value: 0, line:     146:1  
+
+TSV_TIMx_CYCLES      #define, value: 5, line:      42:1  
+
+TTIMER_IT_PRIO       #define, value: CORE_IT_PRIO_GROUP, line:      46:1  
+
+TTIMER_IT_PRIO_SUB   #define, value: 1, line:      51:1  
+
+TY_ANY               #define, value: 0xFFFF, line:     205:1  
+
+TY_EVENT             #define, value: 3, line:     199:1  
+
+TY_MAX               #define, value: TY_TASK, line:     203:1  
+
+TY_MUTEX             #define, value: 2, line:     198:1  
+
+TY_SEMAPHORE         #define, value: 1, line:     197:1  
+
+                                    - tsvc -                          Page   49
+
+TY_SYSTIMER          #define, value: 4, line:     200:1  
+
+TY_TASK              #define, value: 5, line:     201:1  
+
+TY_THREAD            #define, value: 0, line:     196:1        258
+
+UGT                  OPERATOR 
+
+ULT                  OPERATOR 
+
+UNTYPED              SEGMENT TYPE 
+
+VAR                  DIRECTIVE 
+
+XDATA                SEGMENT TYPE 
+
+XOR                  OPERATOR 
+
+ZPAGE                SEGMENT TYPE 
+
+[                    DELIMITER 
+
+]                    DELIMITER 
+
+^                    OPERATOR 
+
+^                    DELIMITER 
+
+_OCORE_SIZE          #define, value: 16, line:     169:1        281      296      332      341
+                                                                      344      380      396      425
+                                                                      476      479      572      584
+                                                                      610      639      641      650
+                                                                      652      716      741      769
+                                                                      770      778      865      869
+                                                                      908
+
+__ARM4TM__           #define, value: 4, line:         0  
+
+__ARM5TM__           #define, value: 5, line:         0  
+
+__ARM5T__            #define, value: 5, line:         0  
+
+__ARM5__             #define, value: 5, line:         0  
+
+__ARM6MEDIA__        #define, value: 6, line:         0  
+
+__ARM6M__            #define, value: 11, line:         0  
+
+__ARM6SM__           #define, value: 12, line:         0  
+
+__ARM6T2__           #define, value: 6, line:         0  
+
+__ARM6__             #define, value: 6, line:         0  
+
+__ARM7EM__           #define, value: 13, line:         0  
+
+__ARM7__             #define, value: 7, line:         0  
+
+__ARMVFPV1__         #define, value: 1, line:         0  
+
+__ARMVFPV2__         #define, value: 2, line:         0  
+
+__ARMVFPV3_D16__     #define, value: 1, line:         0  
+
+__ARMVFPV3_FP16__    #define, value: 1, line:         0  
+
+__ARMVFPV3__         #define, value: 3, line:         0  
+
+__ARMVFPV4__         #define, value: 4, line:         0  
+
+__ARMVFP_D16__       #define, value: 1, line:         0  
+
+__ARMVFP_FP16__      #define, value: 1, line:         0  
+
+__ARMVFP_SP__        #define, value: 1, line:         0  
+
+__ARMVFP__           #define, value: __ARMVFPV4__, line:         0  
+
+                                    - tsvc -                          Page   50
+
+__ARM_MEDIA__        #define, value: 1, line:         0  
+
+__ARM_PROFILE_M__    #define, value: 1, line:         0  
+
+__BUILD_NUMBER__     #define,            line:         0  
+
+__CORE_DEF_H         #define, value: , line:      12:1  
+
+__CORE__             #define, value: __ARM7EM__, line:         0  
+
+__DATE__             #define,            line:         0  
+
+__FILE__             #define,            line:         0  
+
+__IAR_SYSTEMS_ASM    #define,            line:         0  
+
+__IAR_SYSTEMS_ASM__  #define,            line:         0  
+
+__IASMARM__          #define, value: 1, line:         0  
+
+__LINE__             #define,            line:         0  
+
+__LITTLE_ENDIAN__    #define, value: 1, line:         0  
+
+__SUBVERSION__       #define,            line:         0  
+
+__TID__              #define,            line:         0  
+
+__TIME__             #define,            line:         0  
+
+__VER__              #define,            line:         0  
+
+_numop_              Target symbol: 0 
+
+_save_op             MACRO 
+
+define               PREPROCESSOR DIRECTIVE 
+
+defined              Target symbol: 0 
+
+elif                 PREPROCESSOR DIRECTIVE 
+
+else                 PREPROCESSOR DIRECTIVE 
+
+endif                PREPROCESSOR DIRECTIVE 
+
+error                PREPROCESSOR DIRECTIVE 
+
+if                   PREPROCESSOR DIRECTIVE 
+
+ifdef                PREPROCESSOR DIRECTIVE 
+
+ifndef               PREPROCESSOR DIRECTIVE 
+
+include              PREPROCESSOR DIRECTIVE 
+
+line                 PREPROCESSOR DIRECTIVE 
+
+message              PREPROCESSOR DIRECTIVE 
+
+offs_R4_R11_regs     #define, value: (40+_OCORE_SIZE), line:     193:1  
+
+offs_flags           #define, value: 2, line:     173:1        382      398      428      431
+                                                                      469      473      773      789
+                                                                      830      839
+
+offs_id              #define, value: (4+_OCORE_SIZE), line:     179:1        281      572      584      610
+
+offs_mode            #define, value: (0+_OCORE_SIZE), line:     178:1        332      341      344      380
+                                                                      396      476      479      639
+                                                                      641      650      652      778
+                                                                      869
+
+offs_next            #define, value: 12, line:     176:1        520      552      587
+
+offs_prev            #define, value: 8, line:     175:1  
+
+offs_rsv0            #define, value: (20+_OCORE_SIZE), line:     185:1  
+                                    - tsvc -                          Page   51
+
+
+offs_rsv1            #define, value: (24+_OCORE_SIZE), line:     186:1  
+
+offs_rsv2            #define, value: (28+_OCORE_SIZE), line:     187:1  
+
+offs_sync            #define, value: 4, line:     174:1        768
+
+offs_sync_size       #define, value: (36+_OCORE_SIZE), line:     191:1        769
+
+offs_tstaRAM_PSP     #define, value: (12+_OCORE_SIZE), line:     182:1        296
+
+offs_tstack_PSP      #define, value: (8+_OCORE_SIZE), line:     181:1        716      741      865      908
+
+offs_tstsize_PSP     #define, value: (16+_OCORE_SIZE), line:     183:1  
+
+offs_ty              #define, value: 0, line:     172:1        257
+
+offs_wait_ms         #define, value: (32+_OCORE_SIZE), line:     189:1        425      770
+
+pragma               PREPROCESSOR DIRECTIVE 
+
+st_LR                #define, value: 20, line:     162:1  
+
+st_PC                #define, value: 24, line:     161:1  
+
+st_PSR               #define, value: 28, line:     160:1  
+
+st_R0                #define, value: 0, line:     167:1  
+
+st_R1                #define, value: 4, line:     166:1  
+
+st_R12               #define, value: 16, line:     163:1  
+
+st_R2                #define, value: 8, line:     165:1  
+
+st_R3                #define, value: 12, line:     164:1  
+
+uint16_t             Target symbol: 0 
+
+undef                PREPROCESSOR DIRECTIVE 
+
+{                    DELIMITER 
+
+|                    OPERATOR 
+
+||                   OPERATOR 
+
+}                    DELIMITER 
+
+~                    OPERATOR 
+
+
+
+Segment             Type 	Mode
+
+----------------------------------------
+
+.rodata             CONST  	REL 
+
+OS_CORE             CODE  	REL 
+
+__EXTERNS           CODE  	ABS Org:0 
+
+
+
+Label               Mode   Type                   Segment    Value/Offset
+
+------------------------------------------------------------------------------
+
+??DUMMY_SYMBOL_IN_BACKEND_PARSED_OPERANDS
+                    ABS    CONST UNTYP.           ASEG       1267 
+
+HardFault_Handler   ABS    CONST EXT [000] UNTYP. __EXTERNS  Solved Extern 
+
+LSCAN2_LEDToggle    ABS    CONST EXT [-001] UNTYP. __EXTERNS  Solved Extern 
+
+PendSV_Handler      ABS    CONST EXT [-001] UNTYP. __EXTERNS  Solved Extern 
+
+                                    - tsvc -                          Page   52
+
+SVC_Cnt             ABS    CONST UNTYP.           .rodata    22 
+
+SVC_Count           REL    CONST UNTYP.           .rodata    0 
+
+SVC_Dead            REL    CONST UNTYP.           OS_CORE    3B 
+
+SVC_End             REL    CONST UNTYP.           .rodata    8C 
+
+SVC_Handler         REL    CONST PUB UNTYP.       OS_CORE    1 
+
+SVC_Table           REL    CONST UNTYP.           .rodata    4 
+
+TID                 ABS    CONST UNTYP.           ASEG       4F00 
+
+__in_R0_current_TOP_stack_ctxREL    CONST PUB UNTYP.       OS_CORE    309 
+
+__in_R0_stack_R1_ctxREL    CONST UNTYP.           OS_CORE    311 
+
+__lab0              REL    CONST UNTYP.           OS_CORE    414 
+
+__lab1              REL    CONST UNTYP.           OS_CORE    418 
+
+__lab2              REL    CONST UNTYP.           OS_CORE    41C 
+
+__lab3              REL    CONST UNTYP.           OS_CORE    420 
+
+__lab4              REL    CONST UNTYP.           OS_CORE    424 
+
+__lab5              REL    CONST UNTYP.           OS_CORE    428 
+
+__lab6              REL    CONST UNTYP.           OS_CORE    42C 
+
+__lab7              REL    CONST UNTYP.           OS_CORE    430 
+
+__lab8              REL    CONST UNTYP.           OS_CORE    434 
+
+__out_R0_to_current_stack_ctxREL    CONST PUB UNTYP.       OS_CORE    2EB 
+
+__out_R0_to_stack_R1_ctxREL    CONST PUB UNTYP.       OS_CORE    2F5 
+
+__vector_table      ABS    CONST EXT [-001] UNTYP. __EXTERNS  Solved Extern 
+
+_otot_              ABS    CONST EXT [-001] UNTYP. __EXTERNS  Solved Extern 
+
+_pend_              ABS    CONST EXT [008] UNTYP. __EXTERNS  Solved Extern 
+
+_proot_             ABS    CONST EXT [007] UNTYP. __EXTERNS  Solved Extern 
+
+_rls_object         ABS    CONST EXT [010] UNTYP. __EXTERNS  Solved Extern 
+
+core_add_CoreObj    ABS    CONST EXT [014] UNTYP. __EXTERNS  Solved Extern 
+
+core_cut_CoreObj    ABS    CONST EXT [012] UNTYP. __EXTERNS  Solved Extern 
+
+core_cut_CoreObj_no_findABS    CONST EXT [013] UNTYP. __EXTERNS  Solved Extern 
+
+core_debug          ABS    CONST EXT [-001] UNTYP. __EXTERNS  Solved Extern 
+
+core_scan_tasklist  ABS    CONST EXT [021] UNTYP. __EXTERNS  Solved Extern 
+
+dbg_error_led       ABS    CONST EXT [-001] UNTYP. __EXTERNS  Solved Extern 
+
+errloop1            REL    CONST UNTYP.           OS_CORE    403 
+
+iptsctx_ld_cur_t    REL    CONST UNTYP.           OS_CORE    30B 
+
+iptsctx_ld_stack_ptrREL    CONST UNTYP.           OS_CORE    31F 
+
+led_loop            ABS    CONST EXT [-001] UNTYP. __EXTERNS  Solved Extern 
+
+mfree               ABS    CONST EXT [003] UNTYP. __EXTERNS  Solved Extern 
+
+optsctx_ld_cur_t    REL    CONST UNTYP.           OS_CORE    2ED 
+
+pctcon              ABS    CONST EXT [006] UNTYP. __EXTERNS  Solved Extern 
+
+relobj_ret          REL    CONST UNTYP.           OS_CORE    373 
+
+                                    - tsvc -                          Page   53
+
+select_next_SW_threadABS    CONST EXT [001] UNTYP. __EXTERNS  Solved Extern 
+
+sub_retIT_R0_thrd_EX_RETURNABS    CONST EXT [022] UNTYP. __EXTERNS  Solved Extern 
+
+sub_switch_context_to_R0_ABS    CONST EXT [002] UNTYP. __EXTERNS  Solved Extern 
+
+svc_DeleteSystemTimerABS    CONST EXT [020] UNTYP. __EXTERNS  Solved Extern 
+
+svc_EnterCriticalSectionREL    CONST UNTYP.           OS_CORE    28D 
+
+svc_LeaveCriticalSectionREL    CONST UNTYP.           OS_CORE    2A3 
+
+svc_PauseSystemTimerABS    CONST EXT [016] UNTYP. __EXTERNS  Solved Extern 
+
+svc_ReleaseObject   REL    CONST UNTYP.           OS_CORE    363 
+
+svc_RestartSystemTimerABS    CONST EXT [015] UNTYP. __EXTERNS  Solved Extern 
+
+svc_ResumeSystemTimerABS    CONST EXT [017] UNTYP. __EXTERNS  Solved Extern 
+
+svc_change_core_obj_flagsREL    CONST PUB UNTYP.       OS_CORE    37D 
+
+svc_close_hndl      ABS    CONST EXT [011] UNTYP. __EXTERNS  Solved Extern 
+
+svc_delete_thread   REL    CONST PUB UNTYP.       OS_CORE    3F 
+
+svc_disable_SW      REL    CONST UNTYP.           OS_CORE    2B9 
+
+svc_enable_SW       REL    CONST UNTYP.           OS_CORE    2C7 
+
+svc_find_and_ret_HANDLEREL    CONST UNTYP.           OS_CORE    20D 
+
+svc_find_by_ID      REL    CONST UNTYP.           OS_CORE    23F 
+
+svc_find_by_handle  REL    CONST PUB UNTYP.       OS_CORE    1DD 
+
+svc_get_set_thread_prioREL    CONST UNTYP.           OS_CORE    C1 
+
+svc_get_thread_handleREL    CONST PUB UNTYP.       OS_CORE    27D 
+
+svc_get_thread_id   REL    CONST PUB UNTYP.       OS_CORE    267 
+
+svc_isSystemTimer   ABS    CONST EXT [019] UNTYP. __EXTERNS  Solved Extern 
+
+svc_isSystemTimerCounterNullABS    CONST EXT [018] UNTYP. __EXTERNS  Solved Extern 
+
+svc_it_tst_ok       REL    CONST UNTYP.           OS_CORE    1 
+
+svc_new_thrd        ABS    CONST EXT [-001] UNTYP. __EXTERNS  Solved Extern 
+
+svc_new_thread      REL    CONST PUB UNTYP.       OS_CORE    3A5 
+
+svc_pop_SWflags_R0_SWREL    CONST UNTYP.           OS_CORE    2E3 
+
+svc_push_SWflags_R0_disable_SWREL    CONST UNTYP.           OS_CORE    2D5 
+
+svc_save_thread_sync_parametersREL    CONST UNTYP.           OS_CORE    323 
+
+svc_scan_tasklist   REL    CONST UNTYP.           OS_CORE    40B 
+
+svc_set_not_privilegedREL    CONST PUB UNTYP.       OS_CORE    119 
+
+svc_set_privileged  REL    CONST PUB UNTYP.       OS_CORE    13B 
+
+svc_set_sleep       REL    CONST UNTYP.           OS_CORE    15D 
+
+svc_set_suspend     REL    CONST UNTYP.           OS_CORE    19F 
+
+svc_sw__ret         REL    CONST UNTYP.           OS_CORE    117 
+
+svc_sw_inf_loop     REL    CONST UNTYP.           OS_CORE    111 
+
+svc_sw_sw_to_R0     REL    CONST UNTYP.           OS_CORE    113 
+
+svc_sw_t_sw         REL    CONST UNTYP.           OS_CORE    405 
+
+svc_sw_thread       REL    CONST UNTYP.           OS_CORE    107 
+
+                                    - tsvc -                          Page   54
+
+svc_sw_thread_to_R0 REL    CONST UNTYP.           OS_CORE    3FD 
+
+svcchcof_reset      REL    CONST UNTYP.           OS_CORE    38F 
+
+svcchcof_ret        REL    CONST UNTYP.           OS_CORE    397 
+
+svcchcof_save       REL    CONST UNTYP.           OS_CORE    393 
+
+svccp_ret           REL    CONST UNTYP.           OS_CORE    F9 
+
+svccp_set           REL    CONST UNTYP.           OS_CORE    DF 
+
+svd_ccobj           REL    CONST UNTYP.           OS_CORE    8D 
+
+svd_ccobj_free_ctx  REL    CONST UNTYP.           OS_CORE    A3 
+
+svd_dt_check_type   REL    CONST UNTYP.           OS_CORE    5B 
+
+svd_dt_correct      REL    CONST UNTYP.           OS_CORE    67 
+
+svd_dt_find         REL    CONST UNTYP.           OS_CORE    53 
+
+svd_ret             REL    CONST UNTYP.           OS_CORE    B5 
+
+svd_scutr_loop      REL    CONST UNTYP.           OS_CORE    73 
+
+svfbh_check_begin   REL    CONST UNTYP.           OS_CORE    1E7 
+
+svfbh_cont          REL    CONST UNTYP.           OS_CORE    203 
+
+svfbh_loop_search   REL    CONST UNTYP.           OS_CORE    1ED 
+
+svfbh_ret           REL    CONST UNTYP.           OS_CORE    20B 
+
+svfbi_check_begin   REL    CONST UNTYP.           OS_CORE    24B 
+
+svfbi_cont          REL    CONST UNTYP.           OS_CORE    259 
+
+svfbi_loop_search   REL    CONST UNTYP.           OS_CORE    251 
+
+svfbi_ret           REL    CONST UNTYP.           OS_CORE    265 
+
+svfrh_cont          REL    CONST UNTYP.           OS_CORE    22B 
+
+svfrh_loop_search   REL    CONST UNTYP.           OS_CORE    215 
+
+svfrh_ret           REL    CONST UNTYP.           OS_CORE    233 
+
+svgti_get_id        REL    CONST UNTYP.           OS_CORE    271 
+
+svgti_ret           REL    CONST UNTYP.           OS_CORE    273 
+
+svnt_push8regs      REL    CONST UNTYP.           OS_CORE    3C5 
+
+svss_ret            REL    CONST UNTYP.           OS_CORE    1CF 
+
+svss_set_suspmask   REL    CONST UNTYP.           OS_CORE    1AD 
+
+tfunc_wrapper       ABS    CONST EXT [004] UNTYP. __EXTERNS  Solved Extern 
+
+topMSP              ABS    CONST EXT [-001] UNTYP. __EXTERNS  Solved Extern 
+
+tswFLdis0           ABS    CONST EXT [009] UNTYP. __EXTERNS  Solved Extern 
+
+twrap_del           ABS    CONST EXT [005] UNTYP. __EXTERNS  Solved Extern 
+
+
+
+
+
+##############################
+#           CRC:0            #
+#        Errors:   0         #
+#        Warnings: 0         #
+#        Bytes: 1220         #
+##############################
+
+
+
+

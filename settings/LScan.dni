@@ -1,0 +1,136 @@
+[Stack]
+FillEnabled=1
+OverflowWarningsEnabled=0
+WarningThreshold=90
+SpWarningsEnabled=0
+WarnLogOnly=1
+UseTrigger=1
+TriggerName=main
+LimitSize=0
+ByteLimit=50
+[Exceptions]
+StopOnUncaught=_ 0
+StopOnThrow=_ 0
+[SWOTraceHWSettings]
+OverrideDefaultClocks=0
+CpuClock=72000000
+ClockAutoDetect=1
+ClockWanted=2000000
+JtagSpeed=2000000
+Prescaler=36
+TimeStampPrescIndex=0
+TimeStampPrescData=0
+PcSampCYCTAP=1
+PcSampPOSTCNT=15
+PcSampIndex=0
+DataLogMode=0
+ITMportsEnable=0
+ITMportsTermIO=0
+ITMportsLogFile=0
+ITMlogFile=$PROJ_DIR$\ITM.log
+[DebugChecksum]
+Checksum=-374589813
+[CallStack]
+ShowArgs=1
+[Disassembly]
+MixedMode=1
+[Interrupts]
+Enabled=1
+Irq0=_ 0 0 0 10 1 0 0 100 0 1 "TIM2 1 0xB0"
+Irq1=_ 0 0 0 2 1 0 0 100 0 1 "ADC1_2 1 0x88"
+Count=2
+[MemoryMap]
+Enabled=0
+Base=0
+UseAuto=0
+TypeViolation=1
+UnspecRange=1
+ActionState=1
+[Trace1]
+Enabled=0
+ShowSource=1
+[Breakpoints]
+Count=0
+[StLinkDriver]
+stlinkserialNo=049F67C2
+stlinkfoundProbes=
+CStepIntDis=_ 0
+[CodeCoverage]
+Enabled=_ 0
+[struct_types]
+Fmt0=DMA_Stream_TypeDef-CR	1	0
+Fmt1=DMA_Stream_TypeDef-M0AR	4	0
+Fmt2=DMA_TypeDef-HISR	4	0
+Fmt3=DMA_TypeDef-LISR	4	0
+Fmt4=TCONTEXT-mode	1	0
+Fmt5=TCONTEXT-tstaRAM_PSP	4	0
+Fmt6=TCONTEXT-tstack_PSP	4	0
+Fmt7=TCONTEXT-tstsize_PSP	4	0
+[Trace2]
+Enabled=0
+ShowSource=0
+[SWOTraceWindow]
+PcSampling=0
+InterruptLogs=0
+ForcedTimeStamps=0
+EventCPI=0
+EventEXC=0
+EventFOLD=0
+EventLSU=0
+EventSLEEP=0
+[DataLog]
+LogEnabled=0
+GraphEnabled=0
+ShowTimeLog=1
+SumEnabled=0
+ShowTimeSum=1
+[EventLog]
+Title_0=Ch3
+Symbol_0=0 4 1
+Title_1=Ch2
+Symbol_1=0 4 1
+Title_2=Ch1
+Symbol_2=0 4 1
+Title_3=Ch0
+Symbol_3=0 4 1
+LogEnabled=0
+GraphEnabled=0
+ShowTimeLog=1
+SumEnabled=0
+ShowTimeSum=1
+SumSortOrder=0
+[InterruptLog]
+LogEnabled=0
+GraphEnabled=0
+ShowTimeLog=1
+SumEnabled=0
+ShowTimeSum=1
+SumSortOrder=0
+[Log file]
+LoggingEnabled=_ 0
+LogFile=_ ""
+Category=_ 0
+[TermIOLog]
+LoggingEnabled=_ 0
+LogFile=_ ""
+[DriverProfiling]
+Enabled=0
+Mode=3
+Graph=0
+Symbiont=0
+Exclusions=
+[CallStackLog]
+Enabled=0
+[CallStackStripe]
+ShowTiming=1
+[Disassemble mode]
+mode=1
+[Breakpoints2]
+Bp0=_ 1 "EMUL_CODE" "{$PROJ_DIR$\OS\core_a.s}.518.1" 0 0 1 "" 0 "" 0
+Count=1
+[Aliases]
+A0=_ "D:\STM32\LScan2\Libraries\STM32F4xx_StdPeriph_Driver\src\stm32f4xx_dac.c" ""
+A1=_ "D:\STM32\LScan2\Libraries\STM32F4xx_StdPeriph_Driver\src\stm32f4xx_tim.c" ""
+A2=_ "D:\STM32\LScan2\OS\core_a.s" ""
+Count=3
+SuppressDialog=0

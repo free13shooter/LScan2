@@ -1,0 +1,1901 @@
+                              - filters_cortexM3 -                    Page    1
+
+###############################################################################
+#                                                                             #
+#     IAR Assembler V6.30.1.53127/W32 for ARM 01/Nov/2017  17:53:07           #
+#     Copyright 1999-2011 IAR Systems AB.                                     #
+#                                                                             #
+#           Source file   =  E:\STM32\LScan\speex\speex\STM32\libspeex\iar\filters_cortexM3.s#
+#           List file     =  E:\STM32\LScan\Debug\List\filters_cortexM3.lst   #
+#           Object file   =  E:\STM32\LScan\Debug\Obj\filters_cortexM3.o      #
+#           Command line  =  E:\STM32\LScan\speex\speex\STM32\libspeex\iar\filters_cortexM3.s #
+#                            -OE:\STM32\LScan\Debug\Obj\ -s+ -M<> -w+ -r      #
+#                            -LE:\STM32\LScan\Debug\List\ -cM -i -B -p80 -t8  #
+#                            -xDI2 --cpu Cortex-M4 --fpu VFPv4_sp             #
+#                                                                             #
+###############################################################################
+
+    1                           /* Copyright (C) 2008 STMicroelectronics, MCD
+                                 */
+
+    2                           /*
+
+    3                           
+
+    4                              Redistribution and use in source and binary
+                                 forms, with or without
+
+    5                              modification, are permitted provided that
+                                 the following conditions
+
+    6                              are met:
+
+    7                              
+
+    8                              - Redistributions of source code must
+                                 retain the above copyright
+
+    9                              notice, this list of conditions and the
+                                 following disclaimer.
+
+   10                              
+
+   11                              - Redistributions in binary form must
+                                 reproduce the above copyright
+
+   12                              notice, this list of conditions and the
+                                 following disclaimer in the
+
+   13                              documentation and/or other materials
+                                 provided with the distribution.
+
+   14                              
+
+   15                              - Neither the name of the Xiph.org
+                                 Foundation nor the names of its
+
+   16                              contributors may be used to endorse or
+                                 promote products derived from
+
+   17                              this software without specific prior
+                                 written permission.
+
+   18                              
+
+   19                              THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+                                 HOLDERS AND CONTRIBUTORS
+
+   20                              ``AS IS'' AND ANY EXPRESS OR IMPLIED
+                                 WARRANTIES, INCLUDING, BUT NOT
+
+   21                              LIMITED TO, THE IMPLIED WARRANTIES OF
+                                 MERCHANTABILITY AND FITNESS FOR
+
+   22                              A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO
+                                 EVENT SHALL THE FOUNDATION OR
+
+   23                              CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+                                 INDIRECT, INCIDENTAL, SPECIAL,
+
+   24                              EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+                              - filters_cortexM3 -                    Page    2
+
+                                 (INCLUDING, BUT NOT LIMITED TO,
+
+   25                              PROCUREMENT OF SUBSTITUTE GOODS OR
+                                 SERVICES; LOSS OF USE, DATA, OR
+
+   26                              PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+                                 CAUSED AND ON ANY THEORY OF
+
+   27                              LIABILITY, WHETHER IN CONTRACT, STRICT
+                                 LIABILITY, OR TORT (INCLUDING
+
+   28                              NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+                                 OUT OF THE USE OF THIS
+
+   29                              SOFTWARE, EVEN IF ADVISED OF THE POSSIBILIT
+                                Y OF SUCH DAMAGE.
+
+   30                           */
+
+   31                           
+
+   32                              SECTION .text:CODE(2)
+
+   33                              
+
+   34                              EXPORT  filter_mem16
+
+   35                              EXPORT  iir_mem16
+
+   36                              EXPORT  fir_mem16
+
+   37                              
+
+   38                              
+
+   39                           #define x1       R0
+
+   40                           #define num1     R1
+
+   41                           #define den1     R2
+
+   42                           #define y1       R3
+
+   43                           #define N1       R12
+
+   44                           #define mem1     LR
+
+   45                           
+
+   46                           #define mem1_0   R4
+
+   47                           #define mem1_1   R5
+
+   48                           #define mem1_2   R4
+
+   49                           #define mem1_3   R5
+
+   50                           #define mem1_4   R4
+
+   51                           #define mem1_5   R5
+
+   52                           #define mem1_6   R4
+
+   53                           #define mem1_7   R5
+
+   54                           #define mem1_8   R4
+
+   55                           #define mem1_9   R5
+
+   56                            
+
+   57                           #define num1_0   R7
+
+   58                           #define num1_1   R7
+
+   59                           #define num1_2   R7
+
+   60                           #define num1_3   R7
+                              - filters_cortexM3 -                    Page    3
+
+
+   61                           #define num1_4   R7
+
+   62                           #define num1_5   R7
+
+   63                           #define num1_6   R7
+
+   64                           #define num1_7   R7
+
+   65                           #define num1_8   R7
+
+   66                           #define num1_9   R7
+
+   67                           
+
+   68                           #define den1_0   R8
+
+   69                           #define den1_1   R8
+
+   70                           #define den1_2   R8
+
+   71                           #define den1_3   R8
+
+   72                           #define den1_4   R8
+
+   73                           #define den1_5   R8
+
+   74                           #define den1_6   R8
+
+   75                           #define den1_7   R8
+
+   76                           #define den1_8   R8
+
+   77                           #define den1_9   R8
+
+   78                             
+
+   79                           #define var1     R9
+
+   80                           #define x1_i     R10
+
+   81                           #define y1_i     R11
+
+   82                           #define ny1i     R11
+
+   83                           /*******************/
+
+   84                           #define x2       R0
+
+   85                           #define den2     R1
+
+   86                           #define y2       R2
+
+   87                           #define N2       R3
+
+   88                           #define mem2     LR
+
+   89                           
+
+   90                           #define mem2_0   R5
+
+   91                           #define mem2_1   R4
+
+   92                           #define mem2_2   R5
+
+   93                           #define mem2_3   R4
+
+   94                           #define mem2_4   R5
+
+   95                           #define mem2_5   R4
+
+   96                           #define mem2_6   R5
+
+   97                           #define mem2_7   R4
+
+   98                           #define mem2_8   R5
+
+   99                           #define mem2_9   R4
+                              - filters_cortexM3 -                    Page    4
+
+
+  100                            
+
+  101                           #define den2_0   R7
+
+  102                           #define den2_1   R7
+
+  103                           #define den2_2   R7
+
+  104                           #define den2_3   R7
+
+  105                           #define den2_4   R7
+
+  106                           #define den2_5   R7
+
+  107                           #define den2_6   R7
+
+  108                           #define den2_7   R7
+
+  109                           #define den2_8   R7
+
+  110                           #define den2_9   R7
+
+  111                             
+
+  112                           #define var2     R7
+
+  113                           #define x2_i     R8
+
+  114                           #define y2_i     R6
+
+  115                           #define ny2i     R6
+
+  116                           /******************/
+
+  117                           #define x3       R0
+
+  118                           #define num3     R1
+
+  119                           #define y3       R2
+
+  120                           #define N3       R3
+
+  121                           #define mem3     LR
+
+  122                             
+
+  123                           #define mem3_0   R4
+
+  124                           #define mem3_1   R5
+
+  125                           #define mem3_2   R4
+
+  126                           #define mem3_3   R5
+
+  127                           #define mem3_4   R4
+
+  128                           #define mem3_5   R5
+
+  129                           #define mem3_6   R4
+
+  130                           #define mem3_7   R5
+
+  131                           #define mem3_8   R4
+
+  132                           #define mem3_9   R5
+
+  133                            
+
+  134                           #define num3_0   R7
+
+  135                           #define num3_1   R7
+
+  136                           #define num3_2   R7
+
+  137                           #define num3_3   R7
+
+  138                           #define num3_4   R7
+                              - filters_cortexM3 -                    Page    5
+
+
+  139                           #define num3_5   R7
+
+  140                           #define num3_6   R7
+
+  141                           #define num3_7   R7
+
+  142                           #define num3_8   R7
+
+  143                           #define num3_9   R7
+
+  144                             
+
+  145                           #define x3_i     R6
+
+  146                           #define y3_i     R7
+
+  147                           #define var3     R8
+
+  148                           
+
+  149                           filter_mem16
+
+  150                           
+
+  151    00000000 2DE9F05F              PUSH   {r4-r12,lr}
+
+  152    00000004 DDF828C0              LDR     N1, [sp,#40]
+
+  153    00000008 DDF830E0              LDR     mem1, [sp,#48]
+
+  154                           Loop1
+
+  155                           
+
+  156    0000000C DEF80040              LDR    mem1_0, [mem1]
+
+  157    00000010 30F902AB              LDRSH  x1_i,[x1], #2
+
+  158                           
+
+  159    00000014 04F58059              ADD        var1, mem1_0, #0x1000   //
+                                                          mem[0] += 1<<LPC_SFIF
+                                                         T>>1; LPC_SFIFT == 13
+                                                          
+
+  160    00000018 0AEB6939              ADD        var1, x1_i, var1, ASR #13 //
+                                                          mem[0]>>LPC_SFIFT +
+                                                          x[i]
+
+  161                                           
+
+  162    0000001C 09F30F0B              SSAT.w  y1_i, #16, var1   //saturate(..
+                                                      ., 32767)
+
+  163                           
+
+  164    00000020 23F802BB              STRH   y1_i, [y1], #2
+
+  165                                    
+
+  166    00000024 CBF1000B              RSB     ny1i, y1_i, #0x00        //nyi
+                                                       = -yi
+
+  167    00000028 0FFA8BFB              SXTH   ny1i, ny1i
+
+  168                           
+
+  169    0000002C B1F90070              LDRSH  num1_0, [num1]
+
+  170    00000030 DEF80450              LDR    mem1_1, [mem1, #4]   
+
+  171    00000034 07FB0A55              MLA    mem1_1, num1_0, x1_i, mem1_1 
+                                                        //mem0 = num0*x_i +
+                                                        mem1   
+
+  172    00000038 B2F90080              LDRSH  den1_0, [den1]   
+
+                              - filters_cortexM3 -                    Page    6
+
+  173    0000003C 08FB0B54              MLA    mem1_0, den1_0, ny1i, mem1_1   
+                                                        //mem0 = den0*nyi +
+                                                        mem1
+
+  174    00000040 CEF80040              STR    mem1_0, [mem1]
+
+  175                           
+
+  176                           
+
+  177    00000044 B1F90270              LDRSH  num1_1, [num1,#2]
+
+  178    00000048 DEF80840              LDR    mem1_2, [mem1,#(2*4)]  
+                                                        
+
+  179    0000004C 07FB0A44              MLA    mem1_2, num1_1, x1_i, mem1_2
+
+  180    00000050 B2F90280              LDRSH  den1_1, [den1,#2]   
+
+  181    00000054 08FB0B45              MLA    mem1_1, den1_1, ny1i, mem1_2
+
+  182    00000058 CEF80450              STR    mem1_1, [mem1,#4]
+
+  183                           
+
+  184    0000005C B1F90470              LDRSH  num1_2, [num1,#(2*2)]
+
+  185    00000060 DEF80C50              LDR    mem1_3, [mem1, #(3*4)]  
+                                                        
+
+  186    00000064 07FB0A55              MLA    mem1_3, num1_2, x1_i, mem1_3
+
+  187    00000068 B2F90480              LDRSH  den1_2, [den1,#(2*2)]  
+                                                        
+
+  188    0000006C 08FB0B54              MLA    mem1_2, den1_2, ny1i, mem1_3
+
+  189    00000070 CEF80840              STR    mem1_2, [mem1, #(2*4)]
+
+  190                           
+
+  191    00000074 B1F90670              LDRSH  num1_3, [num1,#(3*2)]
+
+  192    00000078 DEF81040              LDR    mem1_4, [mem1, #(4*4)]  
+                                                        
+
+  193    0000007C 07FB0A44              MLA    mem1_4, num1_3, x1_i, mem1_4
+
+  194    00000080 B2F90680              LDRSH  den1_3, [den1,#(3*2)]  
+                                                        
+
+  195    00000084 08FB0B45              MLA    mem1_3, den1_3, ny1i, mem1_4
+
+  196    00000088 CEF80C50              STR    mem1_3, [mem1, #(3*4)]
+
+  197                           
+
+  198    0000008C B1F90870              LDRSH  num1_4, [num1,#(4*2)]
+
+  199    00000090 DEF81450              LDR    mem1_5, [mem1, #(5*4)]  
+                                                        
+
+  200    00000094 07FB0A55              MLA    mem1_5, num1_4, x1_i, mem1_5
+
+  201    00000098 B2F90880              LDRSH  den1_4, [den1,#(4*2)]  
+                                                        
+
+  202    0000009C 08FB0B54              MLA    mem1_4, den1_4, ny1i, mem1_5
+
+  203    000000A0 CEF81040              STR    mem1_4, [mem1, #(4*4)]
+
+  204                           
+
+  205    000000A4 B1F90A70              LDRSH  num1_5, [num1,#(5*2)]
+
+  206    000000A8 DEF81840              LDR    mem1_6, [mem1, #(6*4)]  
+                                                        
+
+                              - filters_cortexM3 -                    Page    7
+
+  207    000000AC 07FB0A44              MLA    mem1_6, num1_5, x1_i, mem1_6
+
+  208    000000B0 B2F90A80              LDRSH  den1_5, [den1,#(5*2)]  
+                                                        
+
+  209    000000B4 08FB0B45              MLA    mem1_5, den1_5, ny1i, mem1_6
+
+  210    000000B8 CEF81450              STR    mem1_5, [mem1, #(5*4)]
+
+  211                           
+
+  212    000000BC B1F90C70              LDRSH  num1_6, [num1,#(6*2)]
+
+  213    000000C0 DEF81C50              LDR    mem1_7, [mem1, #(7*4)]  
+                                                        
+
+  214    000000C4 07FB0A55              MLA    mem1_7, num1_6, x1_i, mem1_7
+
+  215    000000C8 B2F90C80              LDRSH  den1_6, [den1,#(6*2)]  
+                                                        
+
+  216    000000CC 08FB0B54              MLA    mem1_6, den1_6, ny1i, mem1_7
+
+  217    000000D0 CEF81840              STR    mem1_6, [mem1, #(6*4)]
+
+  218                           
+
+  219    000000D4 B1F90E70              LDRSH  num1_7, [num1,#(7*2)]
+
+  220    000000D8 DEF82040              LDR    mem1_8, [mem1, #(8*4)]  
+                                                        
+
+  221    000000DC 07FB0A44              MLA    mem1_8, num1_7, x1_i, mem1_8
+
+  222    000000E0 B2F90E80              LDRSH  den1_7, [den1,#(7*2)]  
+                                                        
+
+  223    000000E4 08FB0B45              MLA    mem1_7, den1_7, ny1i, mem1_8
+
+  224    000000E8 CEF81C50              STR    mem1_7, [mem1, #(7*4)]
+
+  225                           
+
+  226    000000EC B1F91070              LDRSH  num1_8, [num1,#(8*2)]
+
+  227    000000F0 DEF82450              LDR    mem1_9, [mem1, #(9*4)]  
+                                                        
+
+  228    000000F4 07FB0A55              MLA    mem1_9, num1_8, x1_i, mem1_9
+
+  229    000000F8 B2F91080              LDRSH  den1_8, [den1,#(8*2)]  
+                                                        
+
+  230    000000FC 08FB0B54              MLA    mem1_8, den1_8, ny1i, mem1_9
+
+  231    00000100 CEF82040              STR    mem1_8, [mem1, #(8*4)]
+
+  232                           
+
+  233    00000104 B1F91270              LDRSH  num1_9, [num1, #(9*2)]
+
+  234                                   //MUL    num1_9, x1_i
+
+  235    00000108 07FB0AF7              MUL    num1_9, num1_9, x1_i
+
+  236                           
+
+  237    0000010C B2F91280              LDRSH  den1_9, [den1, #(9*2)]
+
+  238                                   //MUL    den1_9, ny1i
+
+  239    00000110 08FB0BF8              MUL    den1_9, den1_9, ny1i
+
+  240                                   
+
+  241    00000114 B844                  ADD   den1_9,num1_9
+
+  242    00000116 CEF82480              STR   den1_9, [mem1, #(9*4)]
+                              - filters_cortexM3 -                    Page    8
+
+
+  243                           
+
+  244    0000011A BCF1010C              SUBS  N1, N1, #1
+
+  245    0000011E 7FF475AF              BNE   Loop1
+
+  246                           
+
+  247    00000122 BDE8F09F              POP   {r4-r12,pc}
+
+  248                                   
+
+  249                           iir_mem16        
+
+  250                                   
+
+  251    00000126 2DE9F041              PUSH    {r4-r8,lr}
+
+  252    0000012A DDF81CE0              LDR     mem2, [sp, #28]
+
+  253                           
+
+  254                           Loop2
+
+  255                                    
+
+  256    0000012E DEF80050              LDR     mem2_0, [mem2]   
+
+  257    00000132 30F9028B              LDRSH   x2_i,[x2], #2
+
+  258                           
+
+  259    00000136 05F58057              ADD     var2, mem2_0, #0x1000       
+                                                       
+
+  260    0000013A 08EB6738              ADD     x2_i, x2_i, var2, ASR #13      
+                                                                               
+                                                                             
+                                                       
+
+  261                                           
+
+  262    0000013E 08F30F06              SSAT.w  y2_i, #16, x2_i    
+
+  263                                           
+
+  264    00000142 22F8026B              STRH   y2_i, [y2], #2
+
+  265                                    
+
+  266    00000146 C6F10006              RSB     ny2i, y2_i, #0x00      
+                                                       
+
+  267    0000014A 36B2                  SXTH   ny2i, ny2i
+
+  268                                    
+
+  269    0000014C B1F90070              LDRSH  den2_0, [den2]
+
+  270    00000150 DEF80440              LDR    mem2_1, [mem2, #4]   
+
+  271    00000154 07FB0645              MLA    mem2_0, den2_0, ny2i, mem2_1   
+                                                        
+
+  272    00000158 CEF80050              STR    mem2_0, [mem2]
+
+  273                                    
+
+  274    0000015C B1F90270              LDRSH  den2_1, [den2,#2]
+
+  275    00000160 DEF80850              LDR    mem2_2, [mem2,#(2*4)]
+
+  276    00000164 07FB0654              MLA    mem2_1, den2_1, ny2i, mem2_2   
+                                                        
+
+  277    00000168 CEF80440              STR    mem2_1, [mem2,#4]
+
+                              - filters_cortexM3 -                    Page    9
+
+  278                                              
+
+  279    0000016C B1F90470              LDRSH  den2_2, [den2,#(2*2)]
+
+  280    00000170 DEF80C40              LDR    mem2_3, [mem2, #(3*4)]
+
+  281    00000174 07FB0645              MLA    mem2_2, den2_2, ny2i, mem2_3
+
+  282    00000178 CEF80850              STR    mem2_2, [mem2, #(2*4)]
+
+  283                                    
+
+  284    0000017C B1F90670              LDRSH  den2_3, [den2,#(3*2)]
+
+  285    00000180 DEF81050              LDR    mem2_4, [mem2, #(4*4)]
+
+  286    00000184 07FB0654              MLA    mem2_3, den2_3, ny2i, mem2_4
+
+  287    00000188 CEF80C40              STR    mem2_3, [mem2, #(3*4)]
+
+  288                                    
+
+  289    0000018C B1F90870              LDRSH  den2_4, [den2,#(4*2)]
+
+  290    00000190 DEF81440              LDR    mem2_5, [mem2, #(5*4)]
+
+  291    00000194 07FB0645              MLA    mem2_4, den2_4, ny2i, mem2_5
+
+  292    00000198 CEF81050              STR    mem2_4, [mem2, #(4*4)]
+
+  293                                    
+
+  294    0000019C B1F90A70              LDRSH  den2_5, [den2,#(5*2)]
+
+  295    000001A0 DEF81850              LDR    mem2_6, [mem2, #(6*4)]
+
+  296    000001A4 07FB0654              MLA    mem2_5, den2_5, ny2i, mem2_6
+
+  297    000001A8 CEF81440              STR    mem2_5, [mem2, #(5*4)]
+
+  298                                    
+
+  299    000001AC B1F90C70              LDRSH  den2_6, [den2,#(6*2)]
+
+  300    000001B0 DEF81C40              LDR    mem2_7, [mem2, #(7*4)]
+
+  301    000001B4 07FB0645              MLA    mem2_6, den2_6, ny2i, mem2_7
+
+  302    000001B8 CEF81850              STR    mem2_6, [mem2, #(6*4)]
+
+  303                                    
+
+  304    000001BC B1F90E70              LDRSH  den2_7, [den2,#(7*2)]
+
+  305    000001C0 DEF82050              LDR    mem2_8, [mem2, #(8*4)]
+
+  306    000001C4 07FB0654              MLA    mem2_7, den2_7, ny2i, mem2_8
+
+  307    000001C8 CEF81C40              STR    mem2_7, [mem2, #(7*4)]
+
+  308                                    
+
+  309    000001CC B1F91070              LDRSH  den2_8, [den2,#(8*2)]
+
+  310    000001D0 DEF82440              LDR    mem2_9, [mem2, #(9*4)]
+
+  311    000001D4 07FB0645              MLA    mem2_8, den2_8, ny2i, mem2_9
+
+  312    000001D8 CEF82050              STR    mem2_8, [mem2, #(8*4)]
+
+  313                                    
+
+  314    000001DC B1F91270              LDRSH den2_9, [den2,#(9*2)]
+
+  315                                   //MUL   den2_9, ny2i
+
+  316    000001E0 07FB06F7              MUL   den2_9, den2_9, ny2i
+
+                              - filters_cortexM3 -                    Page   10
+
+  317    000001E4 CEF82470              STR   den2_9, [mem2, #(9*4)] 
+
+  318                                    
+
+  319    000001E8 5B1E                  SUBS  N2, N2, #1
+
+  320    000001EA A0D1                  BNE   Loop2
+
+  321                                    
+
+  322    000001EC BDE8F081              POP   {r4-r8,pc}
+
+  323                           
+
+  324                           
+
+  325                           
+
+  326                           
+
+  327                           
+
+  328                           fir_mem16
+
+  329    000001F0 2DE9F041              PUSH   {r4-r8,lr}
+
+  330    000001F4 DDF81CE0              LDR    mem3, [sp, #28]
+
+  331                                   
+
+  332                           Loop3
+
+  333                                    
+
+  334    000001F8 DEF80040              LDR    mem3_0, [mem3]    
+
+  335    000001FC 30F9026B              LDRSH  x3_i,[x3], #2
+
+  336                           
+
+  337    00000200 04F58058              ADD        var3, mem3_0, #0x1000    ;
+                                                          mem3[0] += 1<<LPC_SFI
+                                                         FT>>1; LPC_SFIFT == 13
+                                                          
+
+  338    00000204 06EB6838              ADD        var3, x3_i, var3, ASR #13 ;
+                                                          mem[0]>>LPC_SFIFT +
+                                                          x[i]
+
+  339                                           
+
+  340    00000208 08F30F07              SSAT.w  y3_i, #16, var3   ; saturate(..
+                                                                  ., 32767)
+
+  341                           
+
+  342    0000020C 22F8027B              STRH   y3_i, [y3], #2
+
+  343                                    
+
+  344    00000210 B1F90070              LDRSH  num3_0, [num3]
+
+  345    00000214 DEF80450              LDR    mem3_1, [mem3, #4]   
+
+  346    00000218 07FB0654              MLA    mem3_0, num3_0, x3_i, mem3_1 
+                                                        ;mem0 = num0*x3_i +
+                                                        mem1
+
+  347    0000021C CEF80040              STR    mem3_0, [mem3]
+
+  348                                           
+
+  349    00000220 B1F90270              LDRSH  num3_1, [num3,#2]
+
+  350    00000224 DEF80840              LDR    mem3_2, [mem3,#(2*4)]
+
+  351    00000228 07FB0645              MLA    mem3_1, num3_1, x3_i, mem3_2 
+                                                        ;mem1 = num1*x_i +
+                              - filters_cortexM3 -                    Page   11
+
+                                                        mem2
+
+  352    0000022C CEF80450              STR    mem3_1, [mem3,#4]
+
+  353                                              
+
+  354    00000230 B1F90470              LDRSH  num3_2, [num3,#(2*2)]
+
+  355    00000234 DEF80C50              LDR    mem3_3, [mem3, #(3*4)]
+
+  356    00000238 07FB0654              MLA    mem3_2, num3_2, x3_i, mem3_3
+
+  357    0000023C CEF80840              STR    mem3_2, [mem3, #(2*4)]
+
+  358                                    
+
+  359    00000240 B1F90670              LDRSH  num3_3, [num3,#(3*2)]
+
+  360    00000244 DEF81040              LDR    mem3_4, [mem3, #(4*4)]
+
+  361    00000248 07FB0645              MLA    mem3_3, num3_3, x3_i, mem3_4
+
+  362    0000024C CEF80C50              STR    mem3_3, [mem3, #(3*4)]
+
+  363                                    
+
+  364    00000250 B1F90870              LDRSH  num3_4, [num3,#(4*2)]
+
+  365    00000254 DEF81450              LDR    mem3_5, [mem3, #(5*4)]
+
+  366    00000258 07FB0654              MLA    mem3_4, num3_4, x3_i, mem3_5
+
+  367    0000025C CEF81040              STR    mem3_4, [mem3, #(4*4)]
+
+  368                                    
+
+  369    00000260 B1F90A70              LDRSH  num3_5, [num3,#(5*2)]
+
+  370    00000264 DEF81840              LDR    mem3_6, [mem3, #(6*4)]
+
+  371    00000268 07FB0645              MLA    mem3_5, num3_5, x3_i, mem3_6
+
+  372    0000026C CEF81450              STR    mem3_5, [mem3, #(5*4)]
+
+  373                                    
+
+  374    00000270 B1F90C70              LDRSH  num3_6, [num3,#(6*2)]
+
+  375    00000274 DEF81C50              LDR    mem3_7, [mem3, #(7*4)]
+
+  376    00000278 07FB0654              MLA    mem3_6, num3_6, x3_i, mem3_7
+
+  377    0000027C CEF81840              STR    mem3_6, [mem3, #(6*4)]
+
+  378                                    
+
+  379    00000280 B1F90E70              LDRSH  num3_7, [num3,#(7*2)]
+
+  380    00000284 DEF82040              LDR    mem3_8, [mem3, #(8*4)]
+
+  381    00000288 07FB0645              MLA    mem3_7, num3_7, x3_i, mem3_8
+
+  382    0000028C CEF81C50              STR    mem3_7, [mem3, #(7*4)]
+
+  383                                    
+
+  384    00000290 B1F91070              LDRSH  num3_8, [num3,#(8*2)]
+
+  385    00000294 DEF82450              LDR    mem3_9, [mem3, #(9*4)]
+
+  386    00000298 07FB0654              MLA    mem3_8, num3_8, x3_i, mem3_9
+
+  387    0000029C CEF82040              STR    mem3_8, [mem3, #(8*4)]
+
+  388                                    
+
+  389    000002A0 B1F91270              LDRSH num3_9, [num3,#(9*2)]
+
+                              - filters_cortexM3 -                    Page   12
+
+  390                                   //MUL   num3_9, x3_i
+
+  391    000002A4 07FB06F7              MUL   num3_9, num3_9, x3_i
+
+  392    000002A8 CEF82470              STR   num3_9, [mem3, #(9*4)] 
+
+  393                                    
+
+  394    000002AC 5B1E                  SUBS  N3, N3, #1
+
+  395    000002AE A3D1                  BNE   Loop3
+
+  396                                    
+
+  397    000002B0 BDE8F081              POP   {r4-r8,pc}
+
+  398                                   
+
+  399                                   END
+
+
+
+
+
+EOF                  DELIMITER 
+
+\n                   DELIMITER 
+
+                     DELIMITER 
+
+!                    OPERATOR 
+
+!=                   OPERATOR 
+
+%                    OPERATOR 
+
+&                    OPERATOR 
+
+&&                   OPERATOR 
+
+(                    OPERATOR 
+
+(                    DELIMITER 
+
+)                    OPERATOR 
+
+)                    DELIMITER 
+
+*                    OPERATOR 
+
++                    OPERATOR 
+
+,                    DELIMITER 
+
+-                    OPERATOR 
+
+.                    Target symbol: 24 
+
+/                    OPERATOR 
+
+/                    DELIMITER 
+
+:                    Target symbol: 22 
+
+:                    DELIMITER 
+
+;                    Target symbol: 23 
+
+<                    OPERATOR 
+
+<<                   OPERATOR 
+
+<=                   OPERATOR 
+
+<>                   OPERATOR 
+
+=                    OPERATOR 
+
+                              - filters_cortexM3 -                    Page   13
+
+=                    DIRECTIVE 
+
+==                   OPERATOR 
+
+>                    OPERATOR 
+
+>=                   OPERATOR 
+
+>>                   OPERATOR 
+
+@                    DELIMITER 
+
+AAPCS                DIRECTIVE 
+
+ALIAS                DIRECTIVE 
+
+ALIGN                DIRECTIVE 
+
+ALIGNRAM             DIRECTIVE 
+
+ALIGNROM             DIRECTIVE 
+
+ANOTE                DIRECTIVE 
+
+APSR_NZCV            REGISTER 
+
+ARGFRAME             DIRECTIVE 
+
+ARM                  DIRECTIVE 
+
+ASEGN                DIRECTIVE 
+
+ASR                  MNEMONIC 
+
+BIT                  SEGMENT TYPE 
+
+BYTE1                OPERATOR 
+
+BYTE2                OPERATOR 
+
+BYTE3                OPERATOR 
+
+BYTE4                OPERATOR 
+
+C0                   REGISTER 
+
+C1                   REGISTER 
+
+C10                  REGISTER 
+
+C11                  REGISTER 
+
+C12                  REGISTER 
+
+C13                  REGISTER 
+
+C14                  REGISTER 
+
+C15                  REGISTER 
+
+C2                   REGISTER 
+
+C3                   REGISTER 
+
+C4                   REGISTER 
+
+C5                   REGISTER 
+
+C6                   REGISTER 
+
+C7                   REGISTER 
+
+C8                   REGISTER 
+
+C9                   REGISTER 
+
+CALL_GRAPH_ROOT      DIRECTIVE 
+
+                              - filters_cortexM3 -                    Page   14
+
+CASEOFF              DIRECTIVE 
+
+CASEON               DIRECTIVE 
+
+CFI                  DIRECTIVE 
+
+CODE                 SEGMENT TYPE 
+
+CODE                 DIRECTIVE 
+
+CODE16               DIRECTIVE 
+
+CODE32               DIRECTIVE 
+
+COL                  DIRECTIVE 
+
+CONST                SEGMENT TYPE 
+
+D0                   REGISTER 
+
+D1                   REGISTER 
+
+D10                  REGISTER 
+
+D11                  REGISTER 
+
+D12                  REGISTER 
+
+D13                  REGISTER 
+
+D14                  REGISTER 
+
+D15                  REGISTER 
+
+D2                   REGISTER 
+
+D3                   REGISTER 
+
+D4                   REGISTER 
+
+D5                   REGISTER 
+
+D6                   REGISTER 
+
+D7                   REGISTER 
+
+D8                   REGISTER 
+
+D9                   REGISTER 
+
+DATA                 SEGMENT TYPE 
+
+DATA                 DIRECTIVE 
+
+DATE                 OPERATOR 
+
+DC16                 DIRECTIVE 
+
+DC24                 DIRECTIVE 
+
+DC32                 DIRECTIVE 
+
+DC8                  DIRECTIVE 
+
+DCB                  DIRECTIVE 
+
+DCD                  DIRECTIVE 
+
+DCREL32              DIRECTIVE 
+
+DCW                  DIRECTIVE 
+
+DEFINE               DIRECTIVE 
+
+DF32                 DIRECTIVE 
+
+DF64                 DIRECTIVE 
+
+                              - filters_cortexM3 -                    Page   15
+
+DS16                 DIRECTIVE 
+
+DS24                 DIRECTIVE 
+
+DS32                 DIRECTIVE 
+
+DS8                  DIRECTIVE 
+
+ELSE                 DIRECTIVE 
+
+ELSEIF               DIRECTIVE 
+
+END                  DIRECTIVE 
+
+ENDIF                DIRECTIVE 
+
+ENDM                 DIRECTIVE 
+
+ENDMOD               DIRECTIVE 
+
+ENDR                 DIRECTIVE 
+
+EQU                  DIRECTIVE 
+
+EVEN                 DIRECTIVE 
+
+EXITM                DIRECTIVE 
+
+EXPORT               DIRECTIVE 
+
+EXTERN               DIRECTIVE 
+
+EXTWEAK              DIRECTIVE 
+
+FAR                  SEGMENT TYPE 
+
+FARCODE              SEGMENT TYPE 
+
+FARCONST             SEGMENT TYPE 
+
+FARDATA              SEGMENT TYPE 
+
+FPEXC                REGISTER 
+
+FPINST               REGISTER 
+
+FPINST2              REGISTER 
+
+FPSCR                REGISTER 
+
+FPSID                REGISTER 
+
+FUNCALL              DIRECTIVE 
+
+FUNCTION             DIRECTIVE 
+
+HIGH                 OPERATOR 
+
+HUGE                 SEGMENT TYPE 
+
+HUGECODE             SEGMENT TYPE 
+
+HUGECONST            SEGMENT TYPE 
+
+HUGEDATA             SEGMENT TYPE 
+
+HWRD                 OPERATOR 
+
+IDATA                SEGMENT TYPE 
+
+IF                   DIRECTIVE 
+
+IMPORT               DIRECTIVE 
+
+INCLUDE              DIRECTIVE 
+
+LIBRARY              DIRECTIVE 
+
+                              - filters_cortexM3 -                    Page   16
+
+LOCAL                DIRECTIVE 
+
+LOCFRAME             DIRECTIVE 
+
+LOW                  OPERATOR 
+
+LR                   REGISTER 
+
+LSL                  MNEMONIC 
+
+LSR                  MNEMONIC 
+
+LSTCND               DIRECTIVE 
+
+LSTCOD               DIRECTIVE 
+
+LSTEXP               DIRECTIVE 
+
+LSTMAC               DIRECTIVE 
+
+LSTOUT               DIRECTIVE 
+
+LSTPAG               DIRECTIVE 
+
+LSTREP               DIRECTIVE 
+
+LSTXRF               DIRECTIVE 
+
+LTORG                DIRECTIVE 
+
+LWRD                 OPERATOR 
+
+MACRO                DIRECTIVE 
+
+MODULE               DIRECTIVE 
+
+MVFR0                REGISTER 
+
+MVFR1                REGISTER 
+
+N1                   #define, value: R12, line:        43        152      244      244
+
+N2                   #define, value: R3, line:        87        319      319
+
+N3                   #define, value: R3, line:       120        394      394
+
+NAME                 DIRECTIVE 
+
+NEAR                 SEGMENT TYPE 
+
+NEARCODE             SEGMENT TYPE 
+
+NEARCONST            SEGMENT TYPE 
+
+NEARDATA             SEGMENT TYPE 
+
+NOALLOC              SEGMENT TYPE 
+
+NOCALL               DIRECTIVE 
+
+NOROOT               SEGMENT TYPE 
+
+NPAGE                SEGMENT TYPE 
+
+ODD                  DIRECTIVE 
+
+P0                   REGISTER 
+
+P1                   REGISTER 
+
+P10                  REGISTER 
+
+P11                  REGISTER 
+
+P12                  REGISTER 
+
+P13                  REGISTER 
+
+                              - filters_cortexM3 -                    Page   17
+
+P14                  REGISTER 
+
+P15                  REGISTER 
+
+P2                   REGISTER 
+
+P3                   REGISTER 
+
+P4                   REGISTER 
+
+P5                   REGISTER 
+
+P6                   REGISTER 
+
+P7                   REGISTER 
+
+P8                   REGISTER 
+
+P9                   REGISTER 
+
+PAGE                 DIRECTIVE 
+
+PAGSIZ               DIRECTIVE 
+
+PC                   REGISTER 
+
+PRESERVE8            DIRECTIVE 
+
+PROGRAM              DIRECTIVE 
+
+PUBLIC               DIRECTIVE 
+
+PUBWEAK              DIRECTIVE 
+
+R0                   REGISTER 
+
+R1                   REGISTER 
+
+R10                  REGISTER 
+
+R11                  REGISTER 
+
+R12                  REGISTER 
+
+R13                  REGISTER 
+
+R14                  REGISTER 
+
+R15                  REGISTER 
+
+R2                   REGISTER 
+
+R3                   REGISTER 
+
+R4                   REGISTER 
+
+R5                   REGISTER 
+
+R6                   REGISTER 
+
+R7                   REGISTER 
+
+R8                   REGISTER 
+
+R9                   REGISTER 
+
+RADIX                DIRECTIVE 
+
+REGISTER             SEGMENT TYPE 
+
+RELOC_ARM_PREL31     OPERATOR 
+
+RELOC_ARM_TARGET1    OPERATOR 
+
+RELOC_ARM_TARGET2    OPERATOR 
+
+RELOC_LOCAL          OPERATOR 
+
+                              - filters_cortexM3 -                    Page   18
+
+REORDER              SEGMENT TYPE 
+
+REPT                 DIRECTIVE 
+
+REPTC                DIRECTIVE 
+
+REPTI                DIRECTIVE 
+
+REQUIRE              DIRECTIVE 
+
+REQUIRE8             DIRECTIVE 
+
+ROOT                 SEGMENT TYPE 
+
+ROR                  MNEMONIC 
+
+RRX                  MNEMONIC 
+
+RSEG                 DIRECTIVE 
+
+RTMODEL              DIRECTIVE 
+
+S0                   REGISTER 
+
+S1                   REGISTER 
+
+S10                  REGISTER 
+
+S11                  REGISTER 
+
+S12                  REGISTER 
+
+S13                  REGISTER 
+
+S14                  REGISTER 
+
+S15                  REGISTER 
+
+S16                  REGISTER 
+
+S17                  REGISTER 
+
+S18                  REGISTER 
+
+S19                  REGISTER 
+
+S2                   REGISTER 
+
+S20                  REGISTER 
+
+S21                  REGISTER 
+
+S22                  REGISTER 
+
+S23                  REGISTER 
+
+S24                  REGISTER 
+
+S25                  REGISTER 
+
+S26                  REGISTER 
+
+S27                  REGISTER 
+
+S28                  REGISTER 
+
+S29                  REGISTER 
+
+S3                   REGISTER 
+
+S30                  REGISTER 
+
+S31                  REGISTER 
+
+S4                   REGISTER 
+
+S5                   REGISTER 
+
+                              - filters_cortexM3 -                    Page   19
+
+S6                   REGISTER 
+
+S7                   REGISTER 
+
+S8                   REGISTER 
+
+S9                   REGISTER 
+
+SBREL                OPERATOR 
+
+SECTION              DIRECTIVE 
+
+SECTION_GROUP        DIRECTIVE 
+
+SECTION_LINK         DIRECTIVE 
+
+SECTION_TYPE         DIRECTIVE 
+
+SET                  DIRECTIVE 
+
+SETA                 DIRECTIVE 
+
+SFB                  OPERATOR 
+
+SFE                  OPERATOR 
+
+SFS                  OPERATOR 
+
+SIZEOF               OPERATOR 
+
+SORT                 SEGMENT TYPE 
+
+SP                   REGISTER 
+
+TABLE                DIRECTIVE 
+
+THUMB                DIRECTIVE 
+
+THUMBX               DIRECTIVE 
+
+UGT                  OPERATOR 
+
+ULT                  OPERATOR 
+
+UNTYPED              SEGMENT TYPE 
+
+VAR                  DIRECTIVE 
+
+XDATA                SEGMENT TYPE 
+
+XOR                  OPERATOR 
+
+ZPAGE                SEGMENT TYPE 
+
+[                    DELIMITER 
+
+]                    DELIMITER 
+
+^                    OPERATOR 
+
+^                    DELIMITER 
+
+__ARM4TM__           #define, value: 4, line:         0  
+
+__ARM5TM__           #define, value: 5, line:         0  
+
+__ARM5T__            #define, value: 5, line:         0  
+
+__ARM5__             #define, value: 5, line:         0  
+
+__ARM6MEDIA__        #define, value: 6, line:         0  
+
+__ARM6M__            #define, value: 11, line:         0  
+
+__ARM6SM__           #define, value: 12, line:         0  
+
+__ARM6T2__           #define, value: 6, line:         0  
+
+                              - filters_cortexM3 -                    Page   20
+
+__ARM6__             #define, value: 6, line:         0  
+
+__ARM7EM__           #define, value: 13, line:         0  
+
+__ARM7__             #define, value: 7, line:         0  
+
+__ARMVFPV1__         #define, value: 1, line:         0  
+
+__ARMVFPV2__         #define, value: 2, line:         0  
+
+__ARMVFPV3_D16__     #define, value: 1, line:         0  
+
+__ARMVFPV3_FP16__    #define, value: 1, line:         0  
+
+__ARMVFPV3__         #define, value: 3, line:         0  
+
+__ARMVFPV4__         #define, value: 4, line:         0  
+
+__ARMVFP_D16__       #define, value: 1, line:         0  
+
+__ARMVFP_FP16__      #define, value: 1, line:         0  
+
+__ARMVFP_SP__        #define, value: 1, line:         0  
+
+__ARMVFP__           #define, value: __ARMVFPV4__, line:         0  
+
+__ARM_MEDIA__        #define, value: 1, line:         0  
+
+__ARM_PROFILE_M__    #define, value: 1, line:         0  
+
+__BUILD_NUMBER__     #define,            line:         0  
+
+__CORE__             #define, value: __ARM7EM__, line:         0  
+
+__DATE__             #define,            line:         0  
+
+__FILE__             #define,            line:         0  
+
+__IAR_SYSTEMS_ASM    #define,            line:         0  
+
+__IAR_SYSTEMS_ASM__  #define,            line:         0  
+
+__IASMARM__          #define, value: 1, line:         0  
+
+__LINE__             #define,            line:         0  
+
+__LITTLE_ENDIAN__    #define, value: 1, line:         0  
+
+__SUBVERSION__       #define,            line:         0  
+
+__TID__              #define,            line:         0  
+
+__TIME__             #define,            line:         0  
+
+__VER__              #define,            line:         0  
+
+define               PREPROCESSOR DIRECTIVE 
+
+defined              Target symbol: 0 
+
+den1                 #define, value: R2, line:        41        172      180      187      194
+                                                                      201      208      215      222
+                                                                      229      237
+
+den1_0               #define, value: R8, line:        68        172      173
+
+den1_1               #define, value: R8, line:        69        180      181
+
+den1_2               #define, value: R8, line:        70        187      188
+
+den1_3               #define, value: R8, line:        71        194      195
+
+den1_4               #define, value: R8, line:        72        201      202
+
+den1_5               #define, value: R8, line:        73        208      209
+
+den1_6               #define, value: R8, line:        74        215      216
+
+                              - filters_cortexM3 -                    Page   21
+
+den1_7               #define, value: R8, line:        75        222      223
+
+den1_8               #define, value: R8, line:        76        229      230
+
+den1_9               #define, value: R8, line:        77        237      239      239      241
+                                                                      242
+
+den2                 #define, value: R1, line:        85        269      274      279      284
+                                                                      289      294      299      304
+                                                                      309      314
+
+den2_0               #define, value: R7, line:       101        269      271
+
+den2_1               #define, value: R7, line:       102        274      276
+
+den2_2               #define, value: R7, line:       103        279      281
+
+den2_3               #define, value: R7, line:       104        284      286
+
+den2_4               #define, value: R7, line:       105        289      291
+
+den2_5               #define, value: R7, line:       106        294      296
+
+den2_6               #define, value: R7, line:       107        299      301
+
+den2_7               #define, value: R7, line:       108        304      306
+
+den2_8               #define, value: R7, line:       109        309      311
+
+den2_9               #define, value: R7, line:       110        314      316      316      317
+
+elif                 PREPROCESSOR DIRECTIVE 
+
+else                 PREPROCESSOR DIRECTIVE 
+
+endif                PREPROCESSOR DIRECTIVE 
+
+error                PREPROCESSOR DIRECTIVE 
+
+if                   PREPROCESSOR DIRECTIVE 
+
+ifdef                PREPROCESSOR DIRECTIVE 
+
+ifndef               PREPROCESSOR DIRECTIVE 
+
+include              PREPROCESSOR DIRECTIVE 
+
+line                 PREPROCESSOR DIRECTIVE 
+
+mem1                 #define, value: LR, line:        44        153      156      170      174
+                                                                      178      182      185      189
+                                                                      192      196      199      203
+                                                                      206      210      213      217
+                                                                      220      224      227      231
+                                                                      242
+
+mem1_0               #define, value: R4, line:        46        156      159      173      174
+
+mem1_1               #define, value: R5, line:        47        170      171      171      173
+                                                                      181      182
+
+mem1_2               #define, value: R4, line:        48        178      179      179      181
+                                                                      188      189
+
+mem1_3               #define, value: R5, line:        49        185      186      186      188
+                                                                      195      196
+
+mem1_4               #define, value: R4, line:        50        192      193      193      195
+                                                                      202      203
+
+mem1_5               #define, value: R5, line:        51        199      200      200      202
+                                                                      209      210
+
+mem1_6               #define, value: R4, line:        52        206      207      207      209
+                                                                      216      217
+
+mem1_7               #define, value: R5, line:        53        213      214      214      216
+                                                                      223      224
+                              - filters_cortexM3 -                    Page   22
+
+
+mem1_8               #define, value: R4, line:        54        220      221      221      223
+                                                                      230      231
+
+mem1_9               #define, value: R5, line:        55        227      228      228      230
+
+mem2                 #define, value: LR, line:        88        252      256      270      272
+                                                                      275      277      280      282
+                                                                      285      287      290      292
+                                                                      295      297      300      302
+                                                                      305      307      310      312
+                                                                      317
+
+mem2_0               #define, value: R5, line:        90        256      259      271      272
+
+mem2_1               #define, value: R4, line:        91        270      271      276      277
+
+mem2_2               #define, value: R5, line:        92        275      276      281      282
+
+mem2_3               #define, value: R4, line:        93        280      281      286      287
+
+mem2_4               #define, value: R5, line:        94        285      286      291      292
+
+mem2_5               #define, value: R4, line:        95        290      291      296      297
+
+mem2_6               #define, value: R5, line:        96        295      296      301      302
+
+mem2_7               #define, value: R4, line:        97        300      301      306      307
+
+mem2_8               #define, value: R5, line:        98        305      306      311      312
+
+mem2_9               #define, value: R4, line:        99        310      311
+
+mem3                 #define, value: LR, line:       121        330      334      345      347
+                                                                      350      352      355      357
+                                                                      360      362      365      367
+                                                                      370      372      375      377
+                                                                      380      382      385      387
+                                                                      392
+
+mem3_0               #define, value: R4, line:       123        334      337      346      347
+
+mem3_1               #define, value: R5, line:       124        345      346      351      352
+
+mem3_2               #define, value: R4, line:       125        350      351      356      357
+
+mem3_3               #define, value: R5, line:       126        355      356      361      362
+
+mem3_4               #define, value: R4, line:       127        360      361      366      367
+
+mem3_5               #define, value: R5, line:       128        365      366      371      372
+
+mem3_6               #define, value: R4, line:       129        370      371      376      377
+
+mem3_7               #define, value: R5, line:       130        375      376      381      382
+
+mem3_8               #define, value: R4, line:       131        380      381      386      387
+
+mem3_9               #define, value: R5, line:       132        385      386
+
+message              PREPROCESSOR DIRECTIVE 
+
+num1                 #define, value: R1, line:        40        169      177      184      191
+                                                                      198      205      212      219
+                                                                      226      233
+
+num1_0               #define, value: R7, line:        57        169      171
+
+num1_1               #define, value: R7, line:        58        177      179
+
+num1_2               #define, value: R7, line:        59        184      186
+
+num1_3               #define, value: R7, line:        60        191      193
+
+num1_4               #define, value: R7, line:        61        198      200
+
+num1_5               #define, value: R7, line:        62        205      207
+
+                              - filters_cortexM3 -                    Page   23
+
+num1_6               #define, value: R7, line:        63        212      214
+
+num1_7               #define, value: R7, line:        64        219      221
+
+num1_8               #define, value: R7, line:        65        226      228
+
+num1_9               #define, value: R7, line:        66        233      235      235      241
+
+num3                 #define, value: R1, line:       118        344      349      354      359
+                                                                      364      369      374      379
+                                                                      384      389
+
+num3_0               #define, value: R7, line:       134        344      346
+
+num3_1               #define, value: R7, line:       135        349      351
+
+num3_2               #define, value: R7, line:       136        354      356
+
+num3_3               #define, value: R7, line:       137        359      361
+
+num3_4               #define, value: R7, line:       138        364      366
+
+num3_5               #define, value: R7, line:       139        369      371
+
+num3_6               #define, value: R7, line:       140        374      376
+
+num3_7               #define, value: R7, line:       141        379      381
+
+num3_8               #define, value: R7, line:       142        384      386
+
+num3_9               #define, value: R7, line:       143        389      391      391      392
+
+ny1i                 #define, value: R11, line:        82        166      167      167      173
+                                                                      181      188      195      202
+                                                                      209      216      223      230
+                                                                      239
+
+ny2i                 #define, value: R6, line:       115        266      267      267      271
+                                                                      276      281      286      291
+                                                                      296      301      306      311
+                                                                      316
+
+pragma               PREPROCESSOR DIRECTIVE 
+
+undef                PREPROCESSOR DIRECTIVE 
+
+var1                 #define, value: R9, line:        79        159      160      160      162
+
+var2                 #define, value: R7, line:       112        259      260
+
+var3                 #define, value: R8, line:       147        337      338      338      340
+
+x1                   #define, value: R0, line:        39        157
+
+x1_i                 #define, value: R10, line:        80        157      160      171      179
+                                                                      186      193      200      207
+                                                                      214      221      228      235
+
+x2                   #define, value: R0, line:        84        257
+
+x2_i                 #define, value: R8, line:       113        257      260      260      262
+
+x3                   #define, value: R0, line:       117        335
+
+x3_i                 #define, value: R6, line:       145        335      338      346      351
+                                                                      356      361      366      371
+                                                                      376      381      386      391
+
+y1                   #define, value: R3, line:        42        164
+
+y1_i                 #define, value: R11, line:        81        162      164      166
+
+y2                   #define, value: R2, line:        86        264
+
+y2_i                 #define, value: R6, line:       114        262      264      266
+
+y3                   #define, value: R2, line:       119        342
+
+                              - filters_cortexM3 -                    Page   24
+
+y3_i                 #define, value: R7, line:       146        340      342
+
+{                    DELIMITER 
+
+|                    OPERATOR 
+
+||                   OPERATOR 
+
+}                    DELIMITER 
+
+~                    OPERATOR 
+
+
+
+Segment             Type 	Mode
+
+----------------------------------------
+
+.text               CODE  	REL 
+
+__EXTERNS           CODE  	ABS Org:0 
+
+
+
+Label               Mode   Type                   Segment    Value/Offset
+
+------------------------------------------------------------------------------
+
+??DUMMY_SYMBOL_IN_BACKEND_PARSED_OPERANDS
+                    ABS    CONST UNTYP.           ASEG       1267 
+
+Loop1               REL    CONST UNTYP.           .text      D 
+
+Loop2               REL    CONST UNTYP.           .text      12F 
+
+Loop3               REL    CONST UNTYP.           .text      1F9 
+
+TID                 ABS    CONST UNTYP.           ASEG       4F00 
+
+filter_mem16        REL    CONST PUB UNTYP.       .text      1 
+
+fir_mem16           REL    CONST PUB UNTYP.       .text      1F1 
+
+iir_mem16           REL    CONST PUB UNTYP.       .text      127 
+
+
+
+
+
+##############################
+#           CRC:0            #
+#        Errors:   0         #
+#        Warnings: 0         #
+#         Bytes: 692         #
+##############################
+
+
+
+

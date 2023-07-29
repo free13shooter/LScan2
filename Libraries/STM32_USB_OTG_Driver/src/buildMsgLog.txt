@@ -1,0 +1,22 @@
+usb_core.c 
+E:\STM32\LScan\Libraries\STM32_USB_OTG_Driver\src\usb_core.c(225) : Error[Pe020]: identifier "USB_OTG_FS_MAX_PACKET_SIZE" is undefined
+usb_dcd.c 
+usb_dcd_int.c 
+E:\STM32\LScan\Libraries\STM32_USB_OTG_Driver\src\usb_dcd_int.c(802) : Error[Pe020]: identifier "USB_OTG_FS_MAX_PACKET_SIZE" is undefined
+usb_core.c 
+E:\STM32\LScan\Libraries\STM32_USB_OTG_Driver\src\usb_core.c(225) : Error[Pe020]: identifier "USB_OTG_FS_MAX_PACKET_SIZE" is undefined
+usb_dcd.c 
+usb_dcd_int.c 
+E:\STM32\LScan\Libraries\STM32_USB_OTG_Driver\src\usb_dcd_int.c(802) : Error[Pe020]: identifier "USB_OTG_FS_MAX_PACKET_SIZE" is undefined
+usb_core.c 
+usb_dcd.c 
+usb_dcd_int.c 
+usb_core.c 
+usb_dcd.c 
+usb_dcd_int.c 
+usb_core.c 
+usb_dcd.c 
+usb_dcd_int.c 
+usb_core.c 
+usb_dcd.c 
+usb_dcd_int.c 
